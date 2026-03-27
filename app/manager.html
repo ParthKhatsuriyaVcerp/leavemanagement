@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manager Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <span class="navbar-brand">Leave Management</span>
+  <div class="navbar-user">
+    <span id="navName"></span>
+    <span class="role-badge role-manager">Manager</span>
+    <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+
+  <!-- ── Stats ───────────────────────────────────────────────── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statPending"  style="color:#d97706">—</div>
+      <div class="stat-label">Pending approval</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statApproved" style="color:#059669">—</div>
+      <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statRejected" style="color:#dc2626">—</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-label">Total requests</div>
+    </div>
+  </div>
+
+  <!-- ── Page messages ────────────────────────────────────────── -->
+  <div class="alert alert-error"   id="pageError"></div>
+  <div class="alert alert-success" id="pageSuccess"></div>
+
+  <!-- ── Pending approvals ────────────────────────────────────── -->
+  <div class="flex-between">
+    <h2 style="margin-bottom:0">Pending approvals</h2>
+    <button class="btn btn-outline btn-sm" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="table-wrap mt-16" style="margin-bottom:32px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Type</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Days</th>
+          <th>Reason</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pendingTable">
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── All team requests ─────────────────────────────────────── -->
+  <div class="flex-between">
+    <h2 style="margin-bottom:0">All team requests</h2>
+  </div>
+
+  <div class="table-wrap mt-16">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Type</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Days</th>
+          <th>Status</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody id="allTable">
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── Approve / Reject Modal ─────────────────────────────────── -->
+<div id="modalBackdrop" class="hidden" style="
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+">
+  <div style="
+    background: #fff; border-radius: 16px;
+    padding: 32px; width: 100%; max-width: 420px;
+    margin: 16px;
+  ">
+    <h2 id="modalTitle" style="margin-bottom:6px;">Approve leave</h2>
+    <p id="modalSubtitle" class="text-muted text-sm" style="margin-bottom:20px;"></p>
+
+    <div class="form-group">
+      <label for="modalComments">Comments (optional)</label>
+      <textarea id="modalComments" placeholder="Add a note for the employee..."></textarea>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button class="btn" id="modalConfirmBtn" style="flex:1;">Confirm</button>
+      <button class="btn btn-outline" id="modalCancelBtn" style="flex:1;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/manager.js"></script>
+</body>
+</html>

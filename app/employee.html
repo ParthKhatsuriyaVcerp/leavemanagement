@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <span class="navbar-brand">Leave Management</span>
+  <div class="navbar-user">
+    <span id="navName"></span>
+    <span class="role-badge role-employee">Employee</span>
+    <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+
+  <!-- ── Stats ───────────────────────────────────────────────── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-label">Total requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statPending" style="color:#d97706">—</div>
+      <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statApproved" style="color:#059669">—</div>
+      <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statRejected" style="color:#dc2626">—</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+  </div>
+
+  <!-- ── Leave Request Form ───────────────────────────────────── -->
+  <div class="card" style="max-width:100%; margin-bottom:28px;">
+    <h2>New leave request</h2>
+
+    <div class="alert alert-error"   id="formError"></div>
+    <div class="alert alert-success" id="formSuccess"></div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="leaveType">Leave type</label>
+        <select id="leaveType">
+          <option value="">— Select type —</option>
+          <option value="Annual">Annual leave</option>
+          <option value="Sick">Sick leave</option>
+          <option value="Casual">Casual leave</option>
+          <option value="Emergency">Emergency leave</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="startDate">Start date</label>
+        <input type="date" id="startDate">
+      </div>
+
+      <div class="form-group">
+        <label for="endDate">End date</label>
+        <input type="date" id="endDate">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="reason">Reason</label>
+      <textarea id="reason" placeholder="Briefly describe the reason for your leave..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="submitBtn" style="width:auto; padding:11px 32px;">
+      Submit leave request
+    </button>
+  </div>
+
+  <!-- ── Leave History Table ──────────────────────────────────── -->
+  <div class="flex-between">
+    <h2 style="margin-bottom:0">My leave requests</h2>
+    <button class="btn btn-outline btn-sm" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="table-wrap mt-16">
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Days</th>
+          <th>Status</th>
+          <th>Comments</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="leavesTable">
+        <tr>
+          <td colspan="7" style="text-align:center; padding:32px; color:#9ca3af;">
+            Loading...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/employee.js"></script>
+</body>
+</html>

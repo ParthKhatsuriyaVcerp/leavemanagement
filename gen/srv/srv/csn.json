@@ -1,0 +1,1665 @@
+{
+  "namespace": "com.leaveapp",
+  "definitions": {
+    "com.leaveapp.Users": {
+      "kind": "entity",
+      "includes": [
+        "cuid",
+        "managed"
+      ],
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "email": {
+          "type": "cds.String",
+          "length": 100,
+          "notNull": true
+        },
+        "passwordHash": {
+          "type": "cds.String",
+          "length": 256,
+          "notNull": true
+        },
+        "firstName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "lastName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "role": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "EMPLOYEE"
+          }
+        },
+        "manager": {
+          "type": "cds.Association",
+          "target": "com.leaveapp.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "department": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "isActive": {
+          "type": "cds.Boolean",
+          "default": {
+            "val": true
+          }
+        }
+      }
+    },
+    "com.leaveapp.LeaveRequests": {
+      "kind": "entity",
+      "includes": [
+        "cuid",
+        "managed"
+      ],
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "employee": {
+          "type": "cds.Association",
+          "target": "com.leaveapp.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ],
+          "notNull": true
+        },
+        "leaveType": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "startDate": {
+          "type": "cds.Date",
+          "notNull": true
+        },
+        "endDate": {
+          "type": "cds.Date",
+          "notNull": true
+        },
+        "totalDays": {
+          "type": "cds.Integer"
+        },
+        "reason": {
+          "type": "cds.String",
+          "length": 500
+        },
+        "status": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "PENDING"
+          }
+        },
+        "wfInstanceId": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "approvedBy": {
+          "type": "cds.Association",
+          "target": "com.leaveapp.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "approvedAt": {
+          "type": "cds.DateTime"
+        },
+        "rejectedBy": {
+          "type": "cds.Association",
+          "target": "com.leaveapp.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "rejectedAt": {
+          "type": "cds.DateTime"
+        },
+        "comments": {
+          "type": "cds.String",
+          "length": 500
+        }
+      }
+    },
+    "com.leaveapp.EmployeeHierarchyView": {
+      "kind": "entity",
+      "query": {
+        "SELECT": {
+          "from": {
+            "ref": [
+              "com.leaveapp.Users"
+            ],
+            "as": "emp"
+          },
+          "columns": [
+            {
+              "ref": [
+                "emp",
+                "ID"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "firstName"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "lastName"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "email"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "role"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "department"
+              ]
+            },
+            {
+              "ref": [
+                "emp",
+                "manager",
+                "firstName"
+              ],
+              "as": "managerFirstName"
+            },
+            {
+              "ref": [
+                "emp",
+                "manager",
+                "lastName"
+              ],
+              "as": "managerLastName"
+            },
+            {
+              "ref": [
+                "emp",
+                "manager",
+                "email"
+              ],
+              "as": "managerEmail"
+            }
+          ],
+          "where": [
+            {
+              "ref": [
+                "emp",
+                "isActive"
+              ]
+            },
+            "=",
+            {
+              "val": true
+            }
+          ]
+        }
+      },
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "firstName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "lastName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "email": {
+          "type": "cds.String",
+          "length": 100,
+          "notNull": true
+        },
+        "role": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "EMPLOYEE"
+          }
+        },
+        "department": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "managerFirstName": {
+          "type": "cds.String",
+          "length": 50
+        },
+        "managerLastName": {
+          "type": "cds.String",
+          "length": 50
+        },
+        "managerEmail": {
+          "type": "cds.String",
+          "length": 100
+        }
+      }
+    },
+    "LeaveService": {
+      "@source": "srv/leave-service.cds",
+      "kind": "service",
+      "@path": "/api"
+    },
+    "LeaveService.register": {
+      "kind": "action",
+      "params": {
+        "email": {
+          "type": "cds.String"
+        },
+        "password": {
+          "type": "cds.String"
+        },
+        "firstName": {
+          "type": "cds.String"
+        },
+        "lastName": {
+          "type": "cds.String"
+        },
+        "role": {
+          "type": "cds.String"
+        },
+        "managerId": {
+          "type": "cds.String"
+        },
+        "department": {
+          "type": "cds.String"
+        }
+      },
+      "returns": {
+        "elements": {
+          "success": {
+            "type": "cds.Boolean"
+          },
+          "message": {
+            "type": "cds.String"
+          },
+          "userId": {
+            "type": "cds.String"
+          }
+        }
+      }
+    },
+    "LeaveService.login": {
+      "kind": "action",
+      "params": {
+        "email": {
+          "type": "cds.String"
+        },
+        "password": {
+          "type": "cds.String"
+        }
+      },
+      "returns": {
+        "elements": {
+          "success": {
+            "type": "cds.Boolean"
+          },
+          "token": {
+            "type": "cds.String"
+          },
+          "userId": {
+            "type": "cds.String"
+          },
+          "role": {
+            "type": "cds.String"
+          },
+          "name": {
+            "type": "cds.String"
+          }
+        }
+      }
+    },
+    "LeaveService.LeaveRequests": {
+      "kind": "entity",
+      "@requires": "authenticated-user",
+      "projection": {
+        "from": {
+          "ref": [
+            "com.leaveapp.LeaveRequests"
+          ]
+        }
+      },
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "employee": {
+          "type": "cds.Association",
+          "target": "LeaveService.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ],
+          "notNull": true
+        },
+        "leaveType": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "startDate": {
+          "type": "cds.Date",
+          "notNull": true
+        },
+        "endDate": {
+          "type": "cds.Date",
+          "notNull": true
+        },
+        "totalDays": {
+          "type": "cds.Integer"
+        },
+        "reason": {
+          "type": "cds.String",
+          "length": 500
+        },
+        "status": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "PENDING"
+          }
+        },
+        "wfInstanceId": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "approvedBy": {
+          "type": "cds.Association",
+          "target": "LeaveService.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "approvedAt": {
+          "type": "cds.DateTime"
+        },
+        "rejectedBy": {
+          "type": "cds.Association",
+          "target": "LeaveService.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "rejectedAt": {
+          "type": "cds.DateTime"
+        },
+        "comments": {
+          "type": "cds.String",
+          "length": 500
+        }
+      },
+      "actions": {
+        "submitLeave": {
+          "kind": "action",
+          "returns": {
+            "elements": {
+              "success": {
+                "type": "cds.Boolean"
+              },
+              "wfInstanceId": {
+                "type": "cds.String"
+              }
+            }
+          }
+        },
+        "cancelLeave": {
+          "kind": "action",
+          "returns": {
+            "elements": {
+              "success": {
+                "type": "cds.Boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "LeaveService.approveLeave": {
+      "kind": "action",
+      "@requires": "Manager",
+      "params": {
+        "leaveId": {
+          "type": "cds.String"
+        },
+        "comments": {
+          "type": "cds.String"
+        }
+      },
+      "returns": {
+        "elements": {
+          "success": {
+            "type": "cds.Boolean"
+          }
+        }
+      }
+    },
+    "LeaveService.rejectLeave": {
+      "kind": "action",
+      "@requires": "Manager",
+      "params": {
+        "leaveId": {
+          "type": "cds.String"
+        },
+        "comments": {
+          "type": "cds.String"
+        }
+      },
+      "returns": {
+        "elements": {
+          "success": {
+            "type": "cds.Boolean"
+          }
+        }
+      }
+    },
+    "LeaveService.Users": {
+      "kind": "entity",
+      "@readonly": true,
+      "@cds.redirection.target": true,
+      "projection": {
+        "from": {
+          "ref": [
+            "com.leaveapp.Users"
+          ]
+        },
+        "excluding": [
+          "passwordHash"
+        ]
+      },
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "email": {
+          "type": "cds.String",
+          "length": 100,
+          "notNull": true
+        },
+        "firstName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "lastName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "role": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "EMPLOYEE"
+          }
+        },
+        "manager": {
+          "type": "cds.Association",
+          "target": "LeaveService.Users",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "department": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "isActive": {
+          "type": "cds.Boolean",
+          "default": {
+            "val": true
+          }
+        }
+      }
+    },
+    "LeaveService.HierarchyView": {
+      "kind": "entity",
+      "@readonly": true,
+      "projection": {
+        "from": {
+          "ref": [
+            "com.leaveapp.EmployeeHierarchyView"
+          ]
+        }
+      },
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "firstName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "lastName": {
+          "type": "cds.String",
+          "length": 50,
+          "notNull": true
+        },
+        "email": {
+          "type": "cds.String",
+          "length": 100,
+          "notNull": true
+        },
+        "role": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "EMPLOYEE"
+          }
+        },
+        "department": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "managerFirstName": {
+          "type": "cds.String",
+          "length": 50
+        },
+        "managerLastName": {
+          "type": "cds.String",
+          "length": 50
+        },
+        "managerEmail": {
+          "type": "cds.String",
+          "length": 100
+        }
+      }
+    },
+    "cds.outbox.Messages": {
+      "kind": "entity",
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "timestamp": {
+          "type": "cds.Timestamp"
+        },
+        "target": {
+          "type": "cds.String"
+        },
+        "msg": {
+          "type": "cds.LargeString"
+        },
+        "attempts": {
+          "type": "cds.Integer",
+          "default": {
+            "val": 0
+          }
+        },
+        "partition": {
+          "type": "cds.Integer",
+          "default": {
+            "val": 0
+          }
+        },
+        "lastError": {
+          "type": "cds.LargeString"
+        },
+        "lastAttemptTimestamp": {
+          "type": "cds.Timestamp"
+        },
+        "status": {
+          "type": "cds.String",
+          "length": 23
+        },
+        "task": {
+          "type": "cds.String",
+          "length": 255
+        },
+        "appid": {
+          "type": "cds.String",
+          "length": 255
+        }
+      }
+    },
+    "Language": {
+      "kind": "type",
+      "@title": "{i18n>Language}",
+      "@description": "{i18n>LanguageCode.Description}",
+      "type": "cds.Association",
+      "target": "sap.common.Languages",
+      "keys": [
+        {
+          "ref": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "Currency": {
+      "kind": "type",
+      "@title": "{i18n>Currency}",
+      "@description": "{i18n>CurrencyCode.Description}",
+      "type": "cds.Association",
+      "target": "sap.common.Currencies",
+      "keys": [
+        {
+          "ref": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "Country": {
+      "kind": "type",
+      "@title": "{i18n>Country}",
+      "@description": "{i18n>CountryCode.Description}",
+      "type": "cds.Association",
+      "target": "sap.common.Countries",
+      "keys": [
+        {
+          "ref": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "Timezone": {
+      "kind": "type",
+      "type": "cds.Association",
+      "target": "sap.common.Timezones",
+      "keys": [
+        {
+          "ref": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "sap.common": {
+      "kind": "context"
+    },
+    "sap.common.Locale": {
+      "kind": "type",
+      "@title": "{i18n>LanguageCode}",
+      "type": "cds.String",
+      "length": 14
+    },
+    "sap.common.Languages": {
+      "kind": "entity",
+      "@cds.autoexpose": true,
+      "@cds.persistence.skip": "if-unused",
+      "@UI.Identification": [
+        {
+          "Value": {
+            "=": "name"
+          }
+        }
+      ],
+      "@cds.odata.valuelist": true,
+      "includes": [
+        "sap.common.CodeList"
+      ],
+      "elements": {
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@Common.Text": {
+            "=": "name"
+          },
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        },
+        "texts": {
+          "type": "cds.Composition",
+          "cardinality": {
+            "max": "*"
+          },
+          "target": "sap.common.Languages.texts",
+          "on": [
+            {
+              "ref": [
+                "texts",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            }
+          ]
+        },
+        "localized": {
+          "type": "cds.Association",
+          "target": "sap.common.Languages.texts",
+          "on": [
+            {
+              "ref": [
+                "localized",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            },
+            "and",
+            {
+              "ref": [
+                "localized",
+                "locale"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "$user",
+                "locale"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sap.common.Countries": {
+      "kind": "entity",
+      "@cds.autoexpose": true,
+      "@cds.persistence.skip": "if-unused",
+      "@UI.Identification": [
+        {
+          "Value": {
+            "=": "name"
+          }
+        }
+      ],
+      "@cds.odata.valuelist": true,
+      "includes": [
+        "sap.common.CodeList"
+      ],
+      "elements": {
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@title": "{i18n>CountryCode}",
+          "@Common.Text": {
+            "=": "name"
+          },
+          "key": true,
+          "type": "cds.String",
+          "length": 3
+        },
+        "texts": {
+          "type": "cds.Composition",
+          "cardinality": {
+            "max": "*"
+          },
+          "target": "sap.common.Countries.texts",
+          "on": [
+            {
+              "ref": [
+                "texts",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            }
+          ]
+        },
+        "localized": {
+          "type": "cds.Association",
+          "target": "sap.common.Countries.texts",
+          "on": [
+            {
+              "ref": [
+                "localized",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            },
+            "and",
+            {
+              "ref": [
+                "localized",
+                "locale"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "$user",
+                "locale"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sap.common.Currencies": {
+      "kind": "entity",
+      "@cds.autoexpose": true,
+      "@cds.persistence.skip": "if-unused",
+      "@UI.Identification": [
+        {
+          "Value": {
+            "=": "name"
+          }
+        }
+      ],
+      "@cds.odata.valuelist": true,
+      "includes": [
+        "sap.common.CodeList"
+      ],
+      "elements": {
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@title": "{i18n>CurrencyCode}",
+          "@Common.Text": {
+            "=": "name"
+          },
+          "key": true,
+          "type": "cds.String",
+          "length": 3
+        },
+        "symbol": {
+          "@title": "{i18n>CurrencySymbol}",
+          "type": "cds.String",
+          "length": 5
+        },
+        "minorUnit": {
+          "@title": "{i18n>CurrencyMinorUnit}",
+          "type": "cds.Int16"
+        },
+        "texts": {
+          "type": "cds.Composition",
+          "cardinality": {
+            "max": "*"
+          },
+          "target": "sap.common.Currencies.texts",
+          "on": [
+            {
+              "ref": [
+                "texts",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            }
+          ]
+        },
+        "localized": {
+          "type": "cds.Association",
+          "target": "sap.common.Currencies.texts",
+          "on": [
+            {
+              "ref": [
+                "localized",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            },
+            "and",
+            {
+              "ref": [
+                "localized",
+                "locale"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "$user",
+                "locale"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sap.common.Timezones": {
+      "kind": "entity",
+      "@cds.autoexpose": true,
+      "@cds.persistence.skip": "if-unused",
+      "@UI.Identification": [
+        {
+          "Value": {
+            "=": "name"
+          }
+        }
+      ],
+      "@cds.odata.valuelist": true,
+      "includes": [
+        "sap.common.CodeList"
+      ],
+      "elements": {
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@title": "{i18n>TimeZoneCode}",
+          "key": true,
+          "type": "cds.String",
+          "length": 100
+        },
+        "texts": {
+          "type": "cds.Composition",
+          "cardinality": {
+            "max": "*"
+          },
+          "target": "sap.common.Timezones.texts",
+          "on": [
+            {
+              "ref": [
+                "texts",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            }
+          ]
+        },
+        "localized": {
+          "type": "cds.Association",
+          "target": "sap.common.Timezones.texts",
+          "on": [
+            {
+              "ref": [
+                "localized",
+                "code"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "code"
+              ]
+            },
+            "and",
+            {
+              "ref": [
+                "localized",
+                "locale"
+              ]
+            },
+            "=",
+            {
+              "ref": [
+                "$user",
+                "locale"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sap.common.CodeList": {
+      "kind": "aspect",
+      "@cds.autoexpose": true,
+      "@cds.persistence.skip": "if-unused",
+      "@UI.Identification": [
+        {
+          "Value": {
+            "=": "name"
+          }
+        }
+      ],
+      "@cds.odata.valuelist": true,
+      "elements": {
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": true,
+          "type": "cds.String",
+          "length": 1000
+        }
+      }
+    },
+    "sap.common.TextsAspect": {
+      "kind": "aspect",
+      "elements": {
+        "locale": {
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        }
+      }
+    },
+    "sap.common.FlowHistory": {
+      "kind": "aspect",
+      "@cds.persistence.skip": "if-unused",
+      "elements": {
+        "transitions_": {
+          "@odata.draft.enabled": false,
+          "type": "cds.Composition",
+          "cardinality": {
+            "max": "*"
+          },
+          "targetAspect": {
+            "elements": {
+              "timestamp": {
+                "@cds.on.insert": {
+                  "=": "$now"
+                },
+                "@UI.HiddenFilter": true,
+                "@UI.ExcludeFromNavigationContext": true,
+                "@Core.Immutable": true,
+                "@title": "{i18n>CreatedAt}",
+                "@readonly": true,
+                "key": true,
+                "type": {
+                  "ref": [
+                    "managed",
+                    "createdAt"
+                  ]
+                }
+              },
+              "user": {
+                "@cds.on.insert": {
+                  "=": "$user"
+                },
+                "@UI.HiddenFilter": true,
+                "@UI.ExcludeFromNavigationContext": true,
+                "@Core.Immutable": true,
+                "@title": "{i18n>CreatedBy}",
+                "@readonly": true,
+                "@description": "{i18n>UserID.Description}",
+                "type": {
+                  "ref": [
+                    "managed",
+                    "createdBy"
+                  ]
+                },
+                "length": 255
+              },
+              "status": {
+                "type": "cds.String"
+              },
+              "comment": {
+                "type": "cds.String"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cuid": {
+      "kind": "aspect",
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        }
+      }
+    },
+    "managed": {
+      "kind": "aspect",
+      "elements": {
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        }
+      }
+    },
+    "temporal": {
+      "kind": "aspect",
+      "elements": {
+        "validFrom": {
+          "@cds.valid.from": true,
+          "type": "cds.Timestamp"
+        },
+        "validTo": {
+          "@cds.valid.to": true,
+          "type": "cds.Timestamp"
+        }
+      }
+    },
+    "User": {
+      "kind": "type",
+      "@title": "{i18n>UserID}",
+      "@description": "{i18n>UserID.Description}",
+      "type": "cds.String",
+      "length": 255
+    },
+    "sap.common.Languages.texts": {
+      "kind": "entity",
+      "@odata.draft.enabled": false,
+      "includes": [
+        "sap.common.TextsAspect"
+      ],
+      "elements": {
+        "locale": {
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        },
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@odata.containment.ignore": true,
+          "@Common.Text": {
+            "=": "name"
+          },
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        }
+      }
+    },
+    "sap.common.Countries.texts": {
+      "kind": "entity",
+      "@odata.draft.enabled": false,
+      "includes": [
+        "sap.common.TextsAspect"
+      ],
+      "elements": {
+        "locale": {
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        },
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@odata.containment.ignore": true,
+          "@title": "{i18n>CountryCode}",
+          "@Common.Text": {
+            "=": "name"
+          },
+          "key": true,
+          "type": "cds.String",
+          "length": 3
+        }
+      }
+    },
+    "sap.common.Currencies.texts": {
+      "kind": "entity",
+      "@odata.draft.enabled": false,
+      "includes": [
+        "sap.common.TextsAspect"
+      ],
+      "elements": {
+        "locale": {
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        },
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@odata.containment.ignore": true,
+          "@title": "{i18n>CurrencyCode}",
+          "@Common.Text": {
+            "=": "name"
+          },
+          "key": true,
+          "type": "cds.String",
+          "length": 3
+        }
+      }
+    },
+    "sap.common.Timezones.texts": {
+      "kind": "entity",
+      "@odata.draft.enabled": false,
+      "includes": [
+        "sap.common.TextsAspect"
+      ],
+      "elements": {
+        "locale": {
+          "@title": "{i18n>LanguageCode}",
+          "key": true,
+          "type": "sap.common.Locale",
+          "length": 14
+        },
+        "name": {
+          "@title": "{i18n>Name}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 255
+        },
+        "descr": {
+          "@title": "{i18n>Description}",
+          "localized": null,
+          "type": "cds.String",
+          "length": 1000
+        },
+        "code": {
+          "@odata.containment.ignore": true,
+          "@title": "{i18n>TimeZoneCode}",
+          "key": true,
+          "type": "cds.String",
+          "length": 100
+        }
+      }
+    }
+  },
+  "meta": {
+    "creator": "CDS Compiler v6.8.0",
+    "compilerCsnFlavor": "inferred",
+    "flavor": "inferred"
+  },
+  "$version": "2.0"
+}

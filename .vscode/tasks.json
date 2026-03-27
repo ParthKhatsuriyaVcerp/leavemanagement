@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "cds watch",
+      "command": "cds watch"
+    },
+    {
+      "label": "cds-deploy-leave-management-my.db",
+      "type": "shell",
+      "command": "cds",
+      "args": [
+        "deploy",
+        "--to",
+        "sqlite:my.db",
+        "--no-save"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        "$cap-sqlite-bind-handler"
+      ]
+    }
+  ]
+}

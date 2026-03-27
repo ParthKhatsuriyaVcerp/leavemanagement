@@ -1,0 +1,30 @@
+{
+  "xsappname": "leave-management",
+  "tenant-mode": "dedicated",
+  "scopes": [
+    { "name": "$XSAPPNAME.Employee", "description": "Employee role" },
+    { "name": "$XSAPPNAME.Manager",  "description": "Manager role" }
+  ],
+  "role-templates": [
+    {
+      "name": "Employee",
+      "description": "Regular employee",
+      "scope-references": ["$XSAPPNAME.Employee"]
+    },
+    {
+      "name": "Manager",
+      "description": "Manager who approves leaves",
+      "scope-references": ["$XSAPPNAME.Manager"]
+    }
+  ],
+  "role-collections": [
+    {
+      "name": "LeaveApp-Employee",
+      "role-template-references": ["$XSAPPNAME.Employee"]
+    },
+    {
+      "name": "LeaveApp-Manager",
+      "role-template-references": ["$XSAPPNAME.Manager"]
+    }
+  ]
+}

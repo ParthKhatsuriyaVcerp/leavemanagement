@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Management — Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page-center">
+  <div class="card">
+
+    <!-- ── LOGIN VIEW ─────────────────────────────────────────── -->
+    <div id="loginView">
+      <h1>Welcome back</h1>
+      <p class="subtitle">Sign in to your leave management account</p>
+
+      <div class="alert alert-error" id="loginError"></div>
+
+      <div class="form-group">
+        <label for="loginEmail">Email address</label>
+        <input type="email" id="loginEmail" placeholder="you@company.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter your password">
+      </div>
+
+      <button class="btn btn-primary" id="loginBtn">Sign in</button>
+
+      <div class="divider mt-16">
+        Don't have an account?
+        <a class="link-text" id="goToRegister">Register here</a>
+      </div>
+    </div>
+
+    <!-- ── REGISTER VIEW ──────────────────────────────────────── -->
+    <div id="registerView" class="hidden">
+      <h1>Create account</h1>
+      <p class="subtitle">Join as an Employee or Manager</p>
+
+      <div class="alert alert-error"   id="regError"></div>
+      <div class="alert alert-success" id="regSuccess"></div>
+
+      <div class="form-group">
+        <label for="regFirstName">First name</label>
+        <input type="text" id="regFirstName" placeholder="Raj">
+      </div>
+
+      <div class="form-group">
+        <label for="regLastName">Last name</label>
+        <input type="text" id="regLastName" placeholder="Shah">
+      </div>
+
+      <div class="form-group">
+        <label for="regEmail">Email address</label>
+        <input type="email" id="regEmail" placeholder="raj@company.com">
+      </div>
+
+      <div class="form-group">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" placeholder="Minimum 8 characters">
+      </div>
+
+      <div class="form-group">
+        <label for="regDept">Department</label>
+        <input type="text" id="regDept" placeholder="Engineering, HR, Sales...">
+      </div>
+
+      <div class="form-group">
+        <label for="regRole">I am registering as</label>
+        <select id="regRole">
+          <option value="">— Select role —</option>
+          <option value="EMPLOYEE">Employee</option>
+          <option value="MANAGER">Manager</option>
+        </select>
+      </div>
+
+      <div class="form-group hidden" id="managerGroup">
+        <label for="regManager">Select your manager</label>
+        <select id="regManager">
+          <option value="">— Select manager —</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" id="regBtn">Create account</button>
+
+      <div class="divider mt-16">
+        Already have an account?
+        <a class="link-text" id="goToLogin">Sign in</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/index.js"></script>
+</body>
+</html>

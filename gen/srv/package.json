@@ -1,0 +1,33 @@
+{
+  "name": "leave-management",
+  "version": "1.0.0",
+  "dependencies": {
+    "@sap/cds": "^9",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2"
+  },
+  "scripts": {
+    "start": "cds-serve"
+  },
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "hana-cloud",
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": {
+            "database": ":memory:"
+          }
+        }
+      }
+    }
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}

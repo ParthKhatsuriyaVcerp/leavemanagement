@@ -1,0 +1,47 @@
+_schema-version: '3.1'
+ID: leave-management
+version: 1.0.0
+
+modules:
+  # ── CAP Backend ──────────────────────────────────────────
+  - name: leave-management-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      buildpack: nodejs_buildpack
+      memory: 256M
+    properties:
+      JWT_SECRET: '${JWT_SECRET}'
+      SBPA_WORKFLOW_URL: '${SBPA_WORKFLOW_URL}'
+      SBPA_TOKEN: '${SBPA_TOKEN}'
+      SBPA_DEFINITION_ID: '${SBPA_DEFINITION_ID}'
+    requires:
+      - name: leave-management-db
+      - name: leave-management-uaa
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: '${default-url}'
+
+  # ── Database deployer ────────────────────────────────────
+  - name: leave-management-db-deployer
+    type: hdb
+    path: gen/db
+    requires:
+      - name: leave-management-db
+
+resources:
+  # ── HANA HDI container ───────────────────────────────────
+  - name: leave-management-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service     : hana
+      service-plan: hdi-shared
+
+  # ── XSUAA (Authentication) ───────────────────────────────
+  - name: leave-management-uaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service     : xsuaa
+      service-plan: application
+      path        : ./xs-security.json
