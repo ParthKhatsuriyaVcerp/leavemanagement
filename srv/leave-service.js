@@ -1,185 +1,188 @@
-const cds     = require('@sap/cds');
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
+const cds = require('@sap/cds');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'leave-app-secret-key-change-in-prod';
 
-// ── SBPA Token cache ──────────────────────────────────────────────
-let cachedToken = null;
-let tokenExpiry = 0;
+// ── Read JWT user attached by server.js middleware ────────────────
+function getJwtUser(req) {
+  try {
+    // Primary: server.js middleware attaches jwtUser to raw Express request
+    if (req._ && req._.req && req._.req.jwtUser) {
+      return req._.req.jwtUser;
+    }
+
+    // Fallback 1: decode from X-JWT-Token header
+    var rawReq = req._ && req._.req;
+    var headers = rawReq && rawReq.headers;
+
+    var token = headers && (
+      headers['x-jwt-token'] ||
+      headers['X-JWT-Token']
+    );
+
+    // Fallback 2: Authorization header
+    if (!token && headers && headers['authorization']) {
+      var auth = headers['authorization'];
+      if (auth.startsWith('Bearer ')) token = auth.slice(7);
+    }
+
+    if (token) return jwt.verify(token, JWT_SECRET);
+    return null;
+  } catch (e) {
+    console.warn('[getJwtUser] failed:', e.message);
+    return null;
+  }
+}
+
+// ── SBPA token cache ──────────────────────────────────────────────
+var cachedToken = null;
+var tokenExpiry = 0;
 
 async function getSBPAToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
-  const UAA_URL       = process.env.SBPA_UAA_URL;
-  const CLIENT_ID     = process.env.SBPA_CLIENT_ID;
-  const CLIENT_SECRET = process.env.SBPA_CLIENT_SECRET;
+  var UAA_URL = process.env.SBPA_UAA_URL;
+  var CLIENT_ID = process.env.SBPA_CLIENT_ID;
+  var CLIENT_SECRET = process.env.SBPA_CLIENT_SECRET;
 
-  if (!UAA_URL || !CLIENT_ID || !CLIENT_SECRET) {
-    console.warn('SBPA credentials not set — skipping token fetch');
+  if (!UAA_URL) {
+    console.warn('[SBPA] Credentials not set');
     return null;
   }
 
-  const response = await fetch(`${UAA_URL}/oauth/token`, {
-    method : 'POST',
+  var res = await fetch(UAA_URL + '/oauth/token', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body   : `grant_type=client_credentials&client_id=${encodeURIComponent(CLIENT_ID)}&client_secret=${encodeURIComponent(CLIENT_SECRET)}`
+    body: 'grant_type=client_credentials' +
+      '&client_id=' + encodeURIComponent(CLIENT_ID) +
+      '&client_secret=' + encodeURIComponent(CLIENT_SECRET)
   });
-
-  const data  = await response.json();
+  var data = await res.json();
   cachedToken = data.access_token;
   tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
   return cachedToken;
 }
 
-// ── Decode JWT from request — works in BAS dev environment ────────
-function decodeUserFromRequest(req) {
-  try {
-    // Primary: from our Express middleware in server.js
-    if (req._ && req._.req && req._.req.jwtUser) {
-      return req._.req.jwtUser;
-    }
-    // Fallback: decode manually from header
-    const raw    = req._ && req._.req;
-    const header = (raw && raw.headers && raw.headers.authorization) || '';
-    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
-    if (!token) return null;
-    return jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    return null;
-  }
-}
-
-// ── SBPA Workflow trigger ─────────────────────────────────────────
+// ── Trigger SBPA workflow ─────────────────────────────────────────
 async function triggerWorkflow(leave, db) {
-  const { Users } = db.entities;
+  var Users = db.entities['com.leaveapp.Users'];
 
-  const employee = await SELECT.one.from(Users).where({ ID: leave.employee_ID });
+  var employee = await SELECT.one.from(Users).where({ ID: leave.employee_ID });
   if (!employee) throw new Error('Employee not found');
 
-  const manager = await SELECT.one.from(Users).where({ ID: employee.manager_ID });
+  var manager = await SELECT.one.from(Users).where({ ID: employee.manager_ID });
   if (!manager) throw new Error('Manager not found for this employee');
 
-  const start     = new Date(leave.startDate);
-  const end       = new Date(leave.endDate);
-  const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  var totalDays = Math.ceil(
+    (new Date(leave.endDate) - new Date(leave.startDate)) / 86400000
+  ) + 1;
 
-  const SBPA_URL           = process.env.SBPA_WORKFLOW_URL;
-  const SBPA_DEFINITION_ID = process.env.SBPA_DEFINITION_ID;
-
+  var SBPA_URL = process.env.SBPA_WORKFLOW_URL;
   if (!SBPA_URL) {
-    console.warn('SBPA_WORKFLOW_URL not set — dev mode, skipping workflow');
+    console.warn('[SBPA] No URL set — dev mode');
     return 'dev-wf-' + Date.now();
   }
 
-  const token   = await getSBPAToken();
-  const payload = {
-    definitionId: SBPA_DEFINITION_ID,
+  var token = await getSBPAToken();
+  var payload = {
+    definitionId: process.env.SBPA_DEFINITION_ID,
     context: {
-      leaveId      : leave.ID,
-      employeeId   : employee.ID,
-      employeeName : `${employee.firstName} ${employee.lastName}`,
+      leaveId: leave.ID,
+      employeeId: employee.ID,
+      employeeName: employee.firstName + ' ' + employee.lastName,
       employeeEmail: employee.email,
-      managerId    : manager.ID,
-      managerEmail : manager.email,
-      leaveType    : leave.leaveType,
-      startDate    : leave.startDate,
-      endDate      : leave.endDate,
-      totalDays,
-      reason       : leave.reason || ''
+      managerId: manager.ID,
+      managerEmail: manager.email,
+      leaveType: leave.leaveType,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      totalDays: totalDays,
+      reason: leave.reason || ''
     }
   };
 
-  const response = await fetch(SBPA_URL, {
-    method : 'POST',
+  var response = await fetch(SBPA_URL, {
+    method: 'POST',
     headers: {
-      'Content-Type' : 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
     },
     body: JSON.stringify(payload)
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`SBPA error ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
+  if (!response.ok) throw new Error('SBPA error ' + response.status);
+  var data = await response.json();
   return data.id;
 }
 
-// ── Main service ──────────────────────────────────────────────────
+// ── CAP Service Implementation ────────────────────────────────────
 module.exports = cds.service.impl(async function () {
-  const { Users, LeaveRequests } = this.entities;
+  var Users = this.entities.Users;
+  var LeaveRequests = this.entities.LeaveRequests;
 
-  // ── REGISTER ──────────────────────────────────────────────────
-  this.on('register', async (req) => {
+  // ── REGISTER ────────────────────────────────────────────────────
+  this.on('register', async function (req) {
     try {
-      const { email, password, firstName, lastName, role, managerId, department } = req.data;
+      var d = req.data;
 
-      if (!email || !password || !firstName || !lastName || !role) {
+      if (!d.email || !d.password || !d.firstName || !d.lastName || !d.role) {
         return req.error(400, 'All fields are required');
       }
-      if (!['EMPLOYEE', 'MANAGER'].includes(role)) {
+      if (!['EMPLOYEE', 'MANAGER'].includes(d.role)) {
         return req.error(400, 'Role must be EMPLOYEE or MANAGER');
       }
-      if (role === 'EMPLOYEE' && !managerId) {
+      if (d.role === 'EMPLOYEE' && !d.managerId) {
         return req.error(400, 'Employee must select a manager');
       }
-      if (password.length < 8) {
+      if (d.password.length < 8) {
         return req.error(400, 'Password must be at least 8 characters');
       }
 
-      const existing = await SELECT.one.from(Users).where({ email });
+      var existing = await SELECT.one.from(Users).where({ email: d.email });
       if (existing) return req.error(409, 'This email is already registered');
 
-      const passwordHash = await bcrypt.hash(password, 12);
-
-      const newUser = {
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-        role,
-        department : department || '',
-        isActive   : true
+      var newUser = {
+        email: d.email,
+        passwordHash: await bcrypt.hash(d.password, 12),
+        firstName: d.firstName,
+        lastName: d.lastName,
+        role: d.role,
+        department: d.department || '',
+        isActive: true
       };
-
-      if (role === 'EMPLOYEE' && managerId) {
-        newUser.manager_ID = managerId;
-      }
+      if (d.role === 'EMPLOYEE' && d.managerId) newUser.manager_ID = d.managerId;
 
       const DBUsers = cds.entities['com.leaveapp.Users'];
       await INSERT.into(DBUsers).entries(newUser);
-
       return { success: true, message: 'Registration successful! You can now log in.' };
 
     } catch (err) {
-      console.error('Register error:', err);
+      console.error('[register]', err.message);
       return req.error(500, 'Registration failed: ' + err.message);
     }
   });
 
-  // ── LOGIN ──────────────────────────────────────────────────────
-  this.on('login', async (req) => {
+  // ── LOGIN ────────────────────────────────────────────────────────
+  this.on('login', async function (req) {
     try {
-      const { email, password } = req.data;
+      var email = req.data.email;
+      var password = req.data.password;
 
-      if (!email || !password) return req.error(400, 'Email and password are required');
-
+      if (!email || !password) return req.error(400, 'Email and password required');
       const DBUsers = cds.entities["com.leaveapp.Users"];
       const user = await SELECT.one.from(DBUsers).where({ email, isActive: true });
       if (!user) return req.error(401, 'Invalid email or password');
 
-      const isValid = await bcrypt.compare(password, user.passwordHash);
-      if (!isValid) return req.error(401, 'Invalid email or password');
+      var ok = await bcrypt.compare(password, user.passwordHash);
+      if (!ok) return req.error(401, 'Invalid email or password');
 
-      const token = jwt.sign(
+      var token = jwt.sign(
         {
           userId: user.ID,
-          email : user.email,
-          role  : user.role,
-          name  : `${user.firstName} ${user.lastName}`
+          email: user.email,
+          role: user.role,
+          name: user.firstName + ' ' + user.lastName
         },
         JWT_SECRET,
         { expiresIn: '8h' }
@@ -187,23 +190,24 @@ module.exports = cds.service.impl(async function () {
 
       return {
         success: true,
-        token,
-        userId : user.ID,
-        role   : user.role,
-        name   : `${user.firstName} ${user.lastName}`
+        token: token,
+        userId: user.ID,
+        role: user.role,
+        name: user.firstName + ' ' + user.lastName
       };
 
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('[login]', err.message);
       return req.error(500, 'Login failed: ' + err.message);
     }
   });
 
-  // ── APPROVE LEAVE ──────────────────────────────────────────────
-  this.on('approveLeave', async (req) => {
+  // ── APPROVE LEAVE ────────────────────────────────────────────────
+  this.on('approveLeave', async function (req) {
     try {
-      const { leaveId, comments } = req.data;
-      const leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      var leaveId = req.data.leaveId;
+      var comments = req.data.comments;
+      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
       if (!leave) return req.error(404, 'Leave request not found');
 
       await UPDATE(LeaveRequests)
@@ -216,11 +220,12 @@ module.exports = cds.service.impl(async function () {
     }
   });
 
-  // ── REJECT LEAVE ───────────────────────────────────────────────
-  this.on('rejectLeave', async (req) => {
+  // ── REJECT LEAVE ─────────────────────────────────────────────────
+  this.on('rejectLeave', async function (req) {
     try {
-      const { leaveId, comments } = req.data;
-      const leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      var leaveId = req.data.leaveId;
+      var comments = req.data.comments;
+      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
       if (!leave) return req.error(404, 'Leave request not found');
 
       await UPDATE(LeaveRequests)
@@ -233,27 +238,26 @@ module.exports = cds.service.impl(async function () {
     }
   });
 
-  // ── SUBMIT LEAVE ───────────────────────────────────────────────
-  this.on('submitLeave', 'LeaveRequests', async (req) => {
+  // ── SUBMIT LEAVE ─────────────────────────────────────────────────
+  this.on('submitLeave', 'LeaveRequests', async function (req) {
     try {
-      const leaveId = req.params[0];
-      const leave   = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      var leaveId = req.params[0];
+      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
       if (!leave) return req.error(404, 'Leave request not found');
 
-      const wfInstanceId = await triggerWorkflow(leave, cds.db);
-      await UPDATE(LeaveRequests).set({ wfInstanceId }).where({ ID: leaveId });
-
-      return { success: true, wfInstanceId };
+      var wfInstanceId = await triggerWorkflow(leave, cds.db);
+      await UPDATE(LeaveRequests).set({ wfInstanceId: wfInstanceId }).where({ ID: leaveId });
+      return { success: true, wfInstanceId: wfInstanceId };
     } catch (err) {
-      console.error('Submit leave error:', err);
+      console.error('[submitLeave]', err.message);
       return req.error(500, err.message);
     }
   });
 
-  // ── CANCEL LEAVE ───────────────────────────────────────────────
-  this.on('cancelLeave', 'LeaveRequests', async (req) => {
+  // ── CANCEL LEAVE ─────────────────────────────────────────────────
+  this.on('cancelLeave', 'LeaveRequests', async function (req) {
     try {
-      const leaveId = req.params[0];
+      var leaveId = req.params[0];
       await UPDATE(LeaveRequests).set({ status: 'CANCELLED' }).where({ ID: leaveId });
       return { success: true };
     } catch (err) {
@@ -261,36 +265,23 @@ module.exports = cds.service.impl(async function () {
     }
   });
 
-  // ── FILTER LeaveRequests by role ───────────────────────────────
-  // This runs BEFORE every READ on LeaveRequests
-  // Employee → sees only their own
-  // Manager  → sees only their team's
-  this.before('READ', 'LeaveRequests', async (req) => {
-    const decoded = decodeUserFromRequest(req);
+  // ── FILTER: Employee sees own, Manager sees team ──────────────────
+  this.before('READ', 'LeaveRequests', async function (req) {
+    var decoded = getJwtUser(req);
+    if (!decoded) return req.error(401, 'Unauthorized');
 
-    // If no valid token — reject with 401
-    if (!decoded) {
-      return req.error(401, 'Unauthorized — please log in again');
-    }
-
-    const currentUser = await SELECT.one.from(Users).where({ ID: decoded.userId });
+    var currentUser = await SELECT.one.from(Users).where({ ID: decoded.userId });
     if (!currentUser) return req.error(401, 'User not found');
 
     if (currentUser.role === 'EMPLOYEE') {
-      // Employee sees only their own requests
       req.query.where({ employee_ID: currentUser.ID });
 
     } else if (currentUser.role === 'MANAGER') {
-      // Manager sees requests from their direct reports
-      const subordinates = await SELECT.from(Users)
-        .columns('ID')
-        .where({ manager_ID: currentUser.ID });
-
-      const ids = subordinates.map(s => s.ID);
+      var team = await SELECT.from(Users).columns('ID').where({ manager_ID: currentUser.ID });
+      var ids = team.map(function (u) { return u.ID; });
 
       if (ids.length === 0) {
-        // Manager has no team yet — return empty result safely
-        req.query.where('1 = 2');
+        req.query.where({ ID: null });
       } else {
         req.query.where({ employee_ID: { in: ids } });
       }

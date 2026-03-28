@@ -3,5 +3,8 @@
     "auth": {
       "kind": "dummy"
     }
+  },
+  "server": {
+    "cors": true
   }
 }

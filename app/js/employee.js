@@ -1,75 +1,53 @@
-// ── employee.js — Employee Dashboard Logic ────────────────────────
+// ── employee.js ───────────────────────────────────────────────────
 
-// ── Auth guard: redirect if not logged in or is a manager ─────────
 (function guardRoute() {
-  const { token, role, name } = getSession();
-  if (!token) {
-    window.location.href = 'index.html';
-    return;
-  }
-  if (role === 'MANAGER') {
-    window.location.href = 'manager.html';
-    return;
-  }
-  document.getElementById('navName').textContent = name;
+  var s = getSession();
+  if (!s.token) { window.location.href = 'index.html'; return; }
+  if (s.role === 'MANAGER') { window.location.href = 'manager.html'; return; }
+  document.getElementById('navName').textContent = s.name;
 })();
 
-// ── Set default dates to today ────────────────────────────────────
 (function setDefaultDates() {
-  const today = new Date().toISOString().split('T')[0];
-  const startEl = document.getElementById('startDate');
-  const endEl   = document.getElementById('endDate');
-
+  var today   = new Date().toISOString().split('T')[0];
+  var startEl = document.getElementById('startDate');
+  var endEl   = document.getElementById('endDate');
   startEl.value = today;
   endEl.value   = today;
   startEl.min   = today;
   endEl.min     = today;
-
   startEl.addEventListener('change', function () {
     endEl.min = this.value;
-    if (endEl.value < this.value) {
-      endEl.value = this.value;
-    }
+    if (endEl.value < this.value) endEl.value = this.value;
   });
 })();
 
-// ── Load leave requests from backend ─────────────────────────────
+// ── Load leave requests ───────────────────────────────────────────
 async function loadLeaves() {
-  const tbody = document.getElementById('leavesTable');
+  var tbody = document.getElementById('leavesTable');
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">Loading...</td></tr>';
 
   try {
-    const res = await apiFetch('/LeaveRequests?$orderby=createdAt%20desc');
+    var res = await apiFetch('/LeaveRequests?$orderby=createdAt%20desc');
+    if (res.status === 401) { logout(); return; }
+    if (!res.ok) throw new Error('Server error ' + res.status);
 
-    // Handle 401 — token expired
-    if (res.status === 401) {
-      logout();
-      return;
-    }
+    var data = await safeJson(res);
+    var rows = data.value || [];
 
-    if (!res.ok) {
-      throw new Error('Server error: ' + res.status);
-    }
-
-    const data = await safeJson(res);
-    const rows = data.value || [];
-
-    // Update stat cards
     document.getElementById('statTotal').textContent    = rows.length;
-    document.getElementById('statPending').textContent  = rows.filter(r => r.status === 'PENDING').length;
-    document.getElementById('statApproved').textContent = rows.filter(r => r.status === 'APPROVED').length;
-    document.getElementById('statRejected').textContent = rows.filter(r => r.status === 'REJECTED').length;
+    document.getElementById('statPending').textContent  = rows.filter(function(r){ return r.status==='PENDING';  }).length;
+    document.getElementById('statApproved').textContent = rows.filter(function(r){ return r.status==='APPROVED'; }).length;
+    document.getElementById('statRejected').textContent = rows.filter(function(r){ return r.status==='REJECTED'; }).length;
 
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">No leave requests yet. Submit your first one above!</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">No leave requests yet.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = rows.map(function (row) {
-      const cancelBtn = row.status === 'PENDING'
+    tbody.innerHTML = rows.map(function(row) {
+      var cancelBtn = row.status === 'PENDING'
         ? '<button class="btn btn-danger btn-sm cancel-btn" data-id="' + row.ID + '">Cancel</button>'
         : '—';
-
       return '<tr>' +
         '<td>' + (row.leaveType || '—') + '</td>' +
         '<td>' + formatDate(row.startDate) + '</td>' +
@@ -81,91 +59,107 @@ async function loadLeaves() {
         '</tr>';
     }).join('');
 
-    // Attach cancel button events
-    document.querySelectorAll('.cancel-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        cancelLeave(this.getAttribute('data-id'));
-      });
+    document.querySelectorAll('.cancel-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { cancelLeave(this.getAttribute('data-id')); });
     });
 
   } catch (err) {
-    console.error('Failed to load leaves:', err);
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#dc2626;">Failed to load data. Please refresh.</td></tr>';
+    console.error('loadLeaves failed:', err);
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#dc2626;">Failed to load. Please refresh.</td></tr>';
   }
 }
 
-// ── Submit new leave request ──────────────────────────────────────
+// ── Submit leave ──────────────────────────────────────────────────
 async function submitLeave() {
   clearAlert('formError');
   clearAlert('formSuccess');
 
-  const leaveType = document.getElementById('leaveType').value;
-  const startDate = document.getElementById('startDate').value;
-  const endDate   = document.getElementById('endDate').value;
-  const reason    = document.getElementById('reason').value.trim();
-  const { userId } = getSession();
+  var leaveType = document.getElementById('leaveType').value;
+  var startDate = document.getElementById('startDate').value;
+  var endDate   = document.getElementById('endDate').value;
+  var reason    = document.getElementById('reason').value.trim();
+  var userId    = getSession().userId;
 
-  // Validate inputs
-  if (!leaveType) {
-    return showAlert('formError', 'Please select a leave type.', 'error');
-  }
-  if (!startDate || !endDate) {
-    return showAlert('formError', 'Please select start and end dates.', 'error');
-  }
-  if (endDate < startDate) {
-    return showAlert('formError', 'End date cannot be before start date.', 'error');
-  }
+  if (!leaveType)           return showAlert('formError', 'Please select a leave type.', 'error');
+  if (!startDate || !endDate) return showAlert('formError', 'Please select start and end dates.', 'error');
+  if (endDate < startDate)  return showAlert('formError', 'End date cannot be before start date.', 'error');
 
-  const totalDays = calcDays(startDate, endDate);
-  const btn       = document.getElementById('submitBtn');
-  btn.disabled    = true;
-  btn.innerHTML   = '<span class="spinner"></span>Submitting...';
+  var totalDays = calcDays(startDate, endDate);
+  var btn       = document.getElementById('submitBtn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting...';
 
   try {
-    // Step 1 — Create the leave record in HANA
-    const createRes = await apiFetch('/LeaveRequests', 'POST', {
-      employee_ID: userId,
-      leaveType,
-      startDate,
-      endDate,
-      totalDays,
-      reason,
-      status: 'PENDING'
+    // ── Step 1: Create leave record ──────────────────────────────
+    // Send "Prefer: return=representation" so CAP returns the created
+    // record with its ID instead of the default empty 204 response
+    var token = getSession().token;
+    var createRes = await fetch(API_BASE + '/LeaveRequests', {
+      method : 'POST',
+      headers: {
+        'Content-Type' : 'application/json',
+        'X-JWT-Token'  : token,
+        'Prefer'       : 'return=representation'   // ← KEY: tells CAP return the created record
+      },
+      body: JSON.stringify({
+        employee_ID: userId,
+        leaveType  : leaveType,
+        startDate  : startDate,
+        endDate    : endDate,
+        totalDays  : totalDays,
+        reason     : reason,
+        status     : 'PENDING'
+      })
     });
 
+    console.log('[submitLeave] Create status:', createRes.status);
+
+    // With Prefer: return=representation, CAP returns 201 with the full record
     if (!createRes.ok) {
-      const errData = await safeJson(createRes);
-      throw new Error(errData.error && errData.error.message
-        ? errData.error.message
-        : 'Failed to create leave request');
+      var errText = await createRes.text();
+      console.error('[submitLeave] Create failed:', errText);
+      try {
+        var errJson = JSON.parse(errText);
+        throw new Error(errJson.error && errJson.error.message ? errJson.error.message : 'Failed to create leave request');
+      } catch(e) {
+        if (e.message !== 'Failed to create leave request') throw e;
+        throw new Error('Failed to create leave request');
+      }
     }
 
-    const created = await safeJson(createRes);
+    var createdText = await createRes.text();
+    console.log('[submitLeave] Create response body:', createdText);
 
-    // Step 2 — Trigger the SBPA workflow
-    const wfRes = await apiFetch(
-      '/LeaveRequests(' + created.ID + ')/submitLeave',
-      'POST',
-      {}
-    );
+    var created = {};
+    if (createdText && createdText.trim() !== '') {
+      try { created = JSON.parse(createdText); } catch(e) { created = {}; }
+    }
 
-    if (!wfRes.ok) {
-      // Workflow trigger failed but record was created — still show partial success
-      const errData = await safeJson(wfRes);
-      console.warn('Workflow trigger failed:', errData);
-      showAlert('formSuccess', 'Leave request saved. Workflow notification may be delayed.', 'success');
+    var createdId = created.ID || created.id;
+    console.log('[submitLeave] Created ID:', createdId);
+
+    // ── Step 2: Trigger workflow if we have the ID ───────────────
+    if (createdId) {
+      var wfRes = await apiFetch('/LeaveRequests(' + createdId + ')/submitLeave', 'POST', {});
+      if (!wfRes.ok) {
+        var wfErr = await safeJson(wfRes);
+        console.warn('[submitLeave] Workflow trigger failed:', wfErr);
+        showAlert('formSuccess', 'Leave request saved. Workflow notification may be delayed.', 'success');
+      } else {
+        showAlert('formSuccess', 'Leave request submitted! Your manager will receive an approval task.', 'success');
+      }
     } else {
-      showAlert('formSuccess', 'Leave request submitted! Your manager will receive an approval task.', 'success');
+      // Record created but could not get ID — still success
+      console.warn('[submitLeave] Record created but ID not returned. Workflow not triggered.');
+      showAlert('formSuccess', 'Leave request saved successfully.', 'success');
     }
 
-    // Reset form fields
     document.getElementById('leaveType').value = '';
     document.getElementById('reason').value    = '';
-
-    // Refresh the table
     loadLeaves();
 
   } catch (err) {
+    console.error('[submitLeave] Error:', err.message);
     showAlert('formError', err.message, 'error');
   } finally {
     btn.disabled  = false;
@@ -173,12 +167,11 @@ async function submitLeave() {
   }
 }
 
-// ── Cancel a pending leave request ───────────────────────────────
+// ── Cancel leave ──────────────────────────────────────────────────
 async function cancelLeave(leaveId) {
   if (!confirm('Are you sure you want to cancel this leave request?')) return;
-
   try {
-    const res = await apiFetch('/LeaveRequests(' + leaveId + ')/cancelLeave', 'POST', {});
+    var res = await apiFetch('/LeaveRequests(' + leaveId + ')/cancelLeave', 'POST', {});
     if (!res.ok) throw new Error('Cancel failed');
     loadLeaves();
   } catch (err) {
@@ -186,10 +179,9 @@ async function cancelLeave(leaveId) {
   }
 }
 
-// ── Wire up buttons ───────────────────────────────────────────────
+// ── Wire up events ────────────────────────────────────────────────
 document.getElementById('submitBtn').addEventListener('click', submitLeave);
 document.getElementById('refreshBtn').addEventListener('click', loadLeaves);
 document.getElementById('logoutBtn').addEventListener('click', logout);
 
-// ── Load data on page start ───────────────────────────────────────
 loadLeaves();

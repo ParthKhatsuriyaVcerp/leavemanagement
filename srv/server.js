@@ -1,71 +1,83 @@
+/**
+ * server.js — Custom Express bootstrap for CAP
+ *
+ * WHY X-JWT-Token instead of Authorization:
+ * SAP BAS runs a reverse proxy that intercepts ALL requests to port 4004.
+ * If it sees an Authorization header with a non-SAP token, it returns 401
+ * BEFORE the request ever reaches your CAP server.
+ * Custom headers like X-JWT-Token pass through the BAS proxy untouched.
+ */
 const cds = require('@sap/cds');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'leave-app-secret-key-change-in-prod';
 
+// Paths that anyone can call without a token
+const PUBLIC_PATHS = ['/login', '/register', '/Users'];
+
+function isPublicPath(path) {
+  return PUBLIC_PATHS.some(p =>
+    path === p ||
+    path.startsWith(p + '?') ||
+    path.startsWith(p + '(')
+  );
+}
+
+function verifyToken(token) {
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (e) {
+    console.log('[Auth] Token invalid:', e.message);
+    return null;
+  }
+}
+
 cds.on('bootstrap', (app) => {
-    console.log("🔥 Custom server.js loaded");
 
-    // ── Allow all OPTIONS requests (CORS preflight) ───────────────
-    app.use((req, res, next) => {
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        if (req.method === 'OPTIONS') return res.sendStatus(200);
-        next();
-    });
+  // ── CORS — allow all origins and our custom header ─────────────
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin',  '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-JWT-Token');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+  });
 
-    // ── Public routes — NO auth needed ───────────────────────────
-    const PUBLIC_ROUTES = [
-        '/api/login',
-        '/api/register',
-        '/api/Users'      // needed for manager dropdown on register page
-    ];
+  // ── Auth middleware — runs before CAP handles any /api request ──
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api')) return next();
 
-    // ── JWT middleware — runs on every /api request ───────────────
-    app.use('/api', (req, res, next) => {
-        // // Skip auth for public routes
-        // const isPublic = PUBLIC_ROUTES.some(route =>
-        //   req.path === route || req.path.startsWith(route + '?')
-        // );
-        // if (isPublic) return next();
+    const resourcePath = req.path.slice(4) || '/';
+    console.log(`[Auth] ${req.method} ${req.path}`);
 
-        // // Skip auth for login/register action calls (they come as POST to /api)
-        // if (req.path === '/' && req.method === 'POST') return next();
+    // Public paths — no token needed
+    if (isPublicPath(resourcePath)) {
+      console.log('[Auth] Public — allowed');
+      return next();
+    }
 
-        // ── Detect CAP action calls (login/register) ───────────────
-        if (req.method === 'POST' && req.path.startsWith('/')) {
-            //const action = req.body && Object.keys(req.body)[0];
+    // Try X-JWT-Token first (BAS-safe), then Authorization as fallback
+    let token = req.headers['x-jwt-token'] || req.headers['X-JWT-Token'];
 
-            if (req.path === '/login' || req.path === '/register') {
-                return next(); // ✅ allow without token
-            }
-        }
+    if (!token) {
+      const auth = req.headers['authorization'] || '';
+      if (auth.startsWith('Bearer ')) token = auth.slice(7);
+    }
 
-        // ── Public GET routes (like Users list)
-        if (req.method === 'GET' && req.path.startsWith('/Users')) {
-            return next();
-        }
+    const decoded = verifyToken(token);
 
-        // Get token from Authorization header
-        const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
-        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!decoded) {
+      console.log('[Auth] BLOCKED — no valid token for', req.path);
+      return res.status(401).json({
+        error: { code: '401', message: 'Unauthorized — please log in again' }
+      });
+    }
 
-        if (!token) {
-            return res.status(401).json({ error: { code: 401, message: 'No token provided. Please log in.' } });
-        }
-
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            // Attach decoded user to request so your handlers can read it
-            req.jwtUser = decoded;
-            // Also attach to CDS request context
-            req.user = { id: decoded.userId, roles: [decoded.role] };
-            next();
-        } catch (err) {
-            return res.status(401).json({ error: { code: 401, message: 'Token expired or invalid. Please log in again.' } });
-        }
-    });
+    req.jwtUser = decoded;
+    console.log('[Auth] OK —', decoded.email, decoded.role);
+    next();
+  });
 
 });
 

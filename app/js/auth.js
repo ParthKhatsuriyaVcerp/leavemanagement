@@ -1,5 +1,16 @@
-const API_BASE = '/api';
+/**
+ * auth.js — Shared utilities for all pages
+ *
+ * KEY CHANGE: We send the JWT in "X-JWT-Token" header instead of
+ * "Authorization: Bearer" because SAP BAS proxy blocks Authorization
+ * headers with non-SAP tokens, returning 401 before your server sees them.
+ */
 
+const API_BASE = '/api';
+// For BTP deployment change to your full URL:
+// const API_BASE = 'https://your-cap-app.cfapps.eu10.hana.ondemand.com/api';
+
+// ── Session helpers ───────────────────────────────────────────────
 function getSession() {
   return {
     token  : localStorage.getItem('lm_token'),
@@ -21,30 +32,36 @@ function logout() {
   window.location.href = 'index.html';
 }
 
-async function apiFetch(path, method = 'GET', body = null) {
+// ── Central fetch function ────────────────────────────────────────
+// Sends token in X-JWT-Token header — safe through SAP BAS proxy
+async function apiFetch(path, method, body) {
+  method = method || 'GET';
+  body   = body   || null;
+
   const { token } = getSession();
 
-  // Check if token exists before making any request
-  if (!token) {
+  if (!token && path !== '/login' && path !== '/register') {
     window.location.href = 'index.html';
     return new Response('{}', { status: 401 });
   }
 
-  const opts = {
-    method,
-    headers: {
-      'Content-Type' : 'application/json',
-      'Authorization': 'Bearer ' + token
-    }
+  var headers = {
+    'Content-Type': 'application/json'
   };
 
+  // Use X-JWT-Token — BAS proxy does NOT block custom headers
+  if (token) {
+    headers['X-JWT-Token'] = token;
+  }
+
+  var opts = { method: method, headers: headers };
   if (body !== null) opts.body = JSON.stringify(body);
 
-  const res = await fetch(API_BASE + path, opts);
+  var res = await fetch(API_BASE + path, opts);
 
-  // Only logout on 401 for data endpoints, not for actions
+  // If token expired, redirect to login
   if (res.status === 401 && method === 'GET') {
-    console.warn('Session expired — logging out');
+    console.warn('[apiFetch] 401 on GET — session expired, logging out');
     logout();
     return res;
   }
@@ -52,30 +69,33 @@ async function apiFetch(path, method = 'GET', body = null) {
   return res;
 }
 
+// ── Safe JSON parse — never throws even on empty response ─────────
 async function safeJson(res) {
   try {
-    const text = await res.text();
+    var text = await res.text();
     if (!text || text.trim() === '') return {};
     return JSON.parse(text);
-  } catch {
+  } catch (e) {
     return {};
   }
 }
 
+// ── Alert helpers ─────────────────────────────────────────────────
 function showAlert(elementId, message, type) {
-  const el = document.getElementById(elementId);
+  var el = document.getElementById(elementId);
   if (!el) return;
   el.textContent = message;
   el.className   = 'alert alert-' + type + ' show';
 }
 
 function clearAlert(elementId) {
-  const el = document.getElementById(elementId);
+  var el = document.getElementById(elementId);
   if (!el) return;
-  el.className   = 'alert';
   el.textContent = '';
+  el.className   = 'alert';
 }
 
+// ── Date and calculation helpers ──────────────────────────────────
 function formatDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', {
@@ -84,7 +104,7 @@ function formatDate(d) {
 }
 
 function calcDays(startStr, endStr) {
-  const s = new Date(startStr);
-  const e = new Date(endStr);
+  var s = new Date(startStr);
+  var e = new Date(endStr);
   return Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
 }
