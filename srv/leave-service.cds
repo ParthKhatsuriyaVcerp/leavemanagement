@@ -40,4 +40,13 @@ service LeaveService @(path: '/api') {
 
   @readonly
   entity HierarchyView   as projection on db.EmployeeHierarchyView;
+
+  action workflowCallback(
+    leaveId       : String,
+    status        : String,
+    comments      : String,
+    decidedBy     : String,
+    callbackSecret: String
+  ) returns { success: Boolean; message: String };
+
 }

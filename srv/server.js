@@ -13,7 +13,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'leave-app-secret-key-change-in-prod';
 
 // Paths that anyone can call without a token
-const PUBLIC_PATHS = ['/login', '/register', '/Users'];
+const PUBLIC_PATHS = ['/login', '/register', '/Users', '/workflowCallback'];
 
 function isPublicPath(path) {
   return PUBLIC_PATHS.some(p =>
@@ -39,7 +39,7 @@ cds.on('bootstrap', (app) => {
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin',  '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-JWT-Token');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-JWT-Token,Prefer');
     if (req.method === 'OPTIONS') return res.sendStatus(200);
     next();
   });

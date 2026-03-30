@@ -114,8 +114,8 @@ async function submitLeave() {
 
     console.log('[submitLeave] Create status:', createRes.status);
 
-    // With Prefer: return=representation, CAP returns 201 with the full record
-    if (!createRes.ok) {
+    // 204/201 are both success for a CREATE
+    if (createRes.status !== 201 && createRes.status !== 204 && !createRes.ok) {
       var errText = await createRes.text();
       console.error('[submitLeave] Create failed:', errText);
       try {
@@ -127,16 +127,32 @@ async function submitLeave() {
       }
     }
 
-    var createdText = await createRes.text();
-    console.log('[submitLeave] Create response body:', createdText);
+    // ── Extract ID — try 3 sources in order of reliability ───────
+    var createdId = null;
 
-    var created = {};
-    if (createdText && createdText.trim() !== '') {
-      try { created = JSON.parse(createdText); } catch(e) { created = {}; }
+    // 1. Location header: SAP BAS proxy always sets this even when it
+    //    strips the body. Format: "LeaveRequests(uuid)" or full URL ending in same.
+    //    This is the most reliable source in the BAS hosted environment.
+    var locationHeader = createRes.headers.get('Location') || createRes.headers.get('location') || '';
+    console.log('[submitLeave] Location header:', locationHeader);
+    if (locationHeader) {
+      var locMatch = locationHeader.match(/LeaveRequests\(([^)]+)\)/);
+      if (locMatch) createdId = locMatch[1];
     }
 
-    var createdId = created.ID || created.id;
-    console.log('[submitLeave] Created ID:', createdId);
+    // 2. Response body: works in local dev / non-BAS environments
+    if (!createdId) {
+      var createdText = await createRes.text();
+      console.log('[submitLeave] Response body:', createdText);
+      if (createdText && createdText.trim() !== '') {
+        try {
+          var created = JSON.parse(createdText);
+          createdId = created.ID || created.id;
+        } catch(e) { /* body was not JSON */ }
+      }
+    }
+
+    console.log('[submitLeave] Resolved ID:', createdId);
 
     // ── Step 2: Trigger workflow if we have the ID ───────────────
     if (createdId) {

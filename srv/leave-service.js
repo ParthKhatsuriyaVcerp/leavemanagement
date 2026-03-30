@@ -4,29 +4,22 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'leave-app-secret-key-change-in-prod';
 
+// ── Prevent any unhandled rejection from crashing the process ────
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection] caught — server will NOT crash:', reason && reason.message || reason);
+});
+
 // ── Read JWT user attached by server.js middleware ────────────────
 function getJwtUser(req) {
   try {
-    // Primary: server.js middleware attaches jwtUser to raw Express request
-    if (req._ && req._.req && req._.req.jwtUser) {
-      return req._.req.jwtUser;
-    }
-
-    // Fallback 1: decode from X-JWT-Token header
+    if (req._ && req._.req && req._.req.jwtUser) return req._.req.jwtUser;
     var rawReq = req._ && req._.req;
     var headers = rawReq && rawReq.headers;
-
-    var token = headers && (
-      headers['x-jwt-token'] ||
-      headers['X-JWT-Token']
-    );
-
-    // Fallback 2: Authorization header
+    var token = headers && (headers['x-jwt-token'] || headers['X-JWT-Token']);
     if (!token && headers && headers['authorization']) {
       var auth = headers['authorization'];
       if (auth.startsWith('Bearer ')) token = auth.slice(7);
     }
-
     if (token) return jwt.verify(token, JWT_SECRET);
     return null;
   } catch (e) {
@@ -41,16 +34,10 @@ var tokenExpiry = 0;
 
 async function getSBPAToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
   var UAA_URL = process.env.SBPA_UAA_URL;
   var CLIENT_ID = process.env.SBPA_CLIENT_ID;
   var CLIENT_SECRET = process.env.SBPA_CLIENT_SECRET;
-
-  if (!UAA_URL) {
-    console.warn('[SBPA] Credentials not set');
-    return null;
-  }
-
+  if (!UAA_URL) { console.warn('[SBPA] Credentials not set'); return null; }
   var res = await fetch(UAA_URL + '/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -65,14 +52,22 @@ async function getSBPAToken() {
 }
 
 // ── Trigger SBPA workflow ─────────────────────────────────────────
-async function triggerWorkflow(leave, db) {
-  var Users = db.entities['com.leaveapp.Users'];
+// Uses cds.run() with plain SQL strings — avoids entity-ref issues
+async function triggerWorkflow(leave) {
+  // Fetch employee using raw SQL to avoid cds.entities binding issues
+  var empRows = await cds.run(
+    `SELECT ID, firstName, lastName, email, manager_ID FROM com_leaveapp_Users WHERE ID = ?`,
+    [leave.employee_ID]
+  );
+  var employee = empRows && empRows[0];
+  if (!employee) throw new Error('Employee not found (ID: ' + leave.employee_ID + ')');
 
-  var employee = await SELECT.one.from(Users).where({ ID: leave.employee_ID });
-  if (!employee) throw new Error('Employee not found');
-
-  var manager = await SELECT.one.from(Users).where({ ID: employee.manager_ID });
-  if (!manager) throw new Error('Manager not found for this employee');
+  var mgrRows = await cds.run(
+    `SELECT ID, email FROM com_leaveapp_Users WHERE ID = ?`,
+    [employee.manager_ID]
+  );
+  var manager = mgrRows && mgrRows[0];
+  if (!manager) throw new Error('Manager not found for employee ' + leave.employee_ID);
 
   var totalDays = Math.ceil(
     (new Date(leave.endDate) - new Date(leave.startDate)) / 86400000
@@ -80,7 +75,7 @@ async function triggerWorkflow(leave, db) {
 
   var SBPA_URL = process.env.SBPA_WORKFLOW_URL;
   if (!SBPA_URL) {
-    console.warn('[SBPA] No URL set — dev mode');
+    console.warn('[SBPA] No SBPA_WORKFLOW_URL set — returning dev stub ID');
     return 'dev-wf-' + Date.now();
   }
 
@@ -88,56 +83,68 @@ async function triggerWorkflow(leave, db) {
   var payload = {
     definitionId: process.env.SBPA_DEFINITION_ID,
     context: {
-      leaveId: leave.ID,
-      employeeId: employee.ID,
-      employeeName: employee.firstName + ' ' + employee.lastName,
-      employeeEmail: employee.email,
-      managerId: manager.ID,
-      managerEmail: manager.email,
-      leaveType: leave.leaveType,
-      startDate: leave.startDate,
-      endDate: leave.endDate,
-      totalDays: totalDays,
+      leaveid: leave.ID,
+      employeeid: employee.ID,
+      employeename: employee.firstName + ' ' + employee.lastName,
+      employeeemail: employee.email,
+      managerid: manager.ID,
+      manageremail: manager.email,
+      leavetype: leave.leaveType,
+      startdate: leave.startDate,
+      enddate: leave.endDate,
+      totaldays: totalDays,
       reason: leave.reason || ''
     }
   };
 
+  console.log('[SBPA] POSTing to:', SBPA_URL);
+  console.log('[SBPA] payload:', JSON.stringify(payload, null, 2));
+
   var response = await fetch(SBPA_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify(payload)
   });
+  var responseText = await response.text();
+  console.log('[SBPA] response status:', response.status);
+  console.log('[SBPA] response body:', responseText);
 
-  if (!response.ok) throw new Error('SBPA error ' + response.status);
-  var data = await response.json();
+  if (!response.ok) {
+    throw new Error('SBPA returned HTTP ' + response.status + ' — ' + responseText);
+  }
+  var data = JSON.parse(responseText);
   return data.id;
+}
+
+// ── Helper: get DB table name for LeaveRequests ───────────────────
+// CAP sqlite table name = <ServiceName>_<EntityName>
+// In BAS/CAP the resolved name is com_leaveapp_LeaveRequests
+async function getLeaveById(leaveId) {
+  var rows = await cds.run(
+    `SELECT * FROM com_leaveapp_LeaveRequests WHERE ID = ?`,
+    [leaveId]
+  );
+  return rows && rows[0];
 }
 
 // ── CAP Service Implementation ────────────────────────────────────
 module.exports = cds.service.impl(async function () {
-  var Users = this.entities.Users;
-  var LeaveRequests = this.entities.LeaveRequests;
+  var srv = this;
+  var Users = srv.entities.Users;
+  var LeaveRequests = srv.entities.LeaveRequests;
 
   // ── REGISTER ────────────────────────────────────────────────────
-  this.on('register', async function (req) {
+  srv.on('register', async function (req) {
     try {
       var d = req.data;
-
-      if (!d.email || !d.password || !d.firstName || !d.lastName || !d.role) {
+      if (!d.email || !d.password || !d.firstName || !d.lastName || !d.role)
         return req.error(400, 'All fields are required');
-      }
-      if (!['EMPLOYEE', 'MANAGER'].includes(d.role)) {
+      if (!['EMPLOYEE', 'MANAGER'].includes(d.role))
         return req.error(400, 'Role must be EMPLOYEE or MANAGER');
-      }
-      if (d.role === 'EMPLOYEE' && !d.managerId) {
+      if (d.role === 'EMPLOYEE' && !d.managerId)
         return req.error(400, 'Employee must select a manager');
-      }
-      if (d.password.length < 8) {
+      if (d.password.length < 8)
         return req.error(400, 'Password must be at least 8 characters');
-      }
 
       var existing = await SELECT.one.from(Users).where({ email: d.email });
       if (existing) return req.error(409, 'This email is already registered');
@@ -156,7 +163,6 @@ module.exports = cds.service.impl(async function () {
       const DBUsers = cds.entities['com.leaveapp.Users'];
       await INSERT.into(DBUsers).entries(newUser);
       return { success: true, message: 'Registration successful! You can now log in.' };
-
     } catch (err) {
       console.error('[register]', err.message);
       return req.error(500, 'Registration failed: ' + err.message);
@@ -164,38 +170,25 @@ module.exports = cds.service.impl(async function () {
   });
 
   // ── LOGIN ────────────────────────────────────────────────────────
-  this.on('login', async function (req) {
+  srv.on('login', async function (req) {
     try {
       var email = req.data.email;
       var password = req.data.password;
-
       if (!email || !password) return req.error(400, 'Email and password required');
-      const DBUsers = cds.entities["com.leaveapp.Users"];
-      const user = await SELECT.one.from(DBUsers).where({ email, isActive: true });
+
+      const DBUsers = cds.entities['com.leaveapp.Users'];
+      var user = await SELECT.one.from(DBUsers).where({ email: email, isActive: true });
       if (!user) return req.error(401, 'Invalid email or password');
 
       var ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return req.error(401, 'Invalid email or password');
 
       var token = jwt.sign(
-        {
-          userId: user.ID,
-          email: user.email,
-          role: user.role,
-          name: user.firstName + ' ' + user.lastName
-        },
+        { userId: user.ID, email: user.email, role: user.role, name: user.firstName + ' ' + user.lastName },
         JWT_SECRET,
         { expiresIn: '8h' }
       );
-
-      return {
-        success: true,
-        token: token,
-        userId: user.ID,
-        role: user.role,
-        name: user.firstName + ' ' + user.lastName
-      };
-
+      return { success: true, token, userId: user.ID, role: user.role, name: user.firstName + ' ' + user.lastName };
     } catch (err) {
       console.error('[login]', err.message);
       return req.error(500, 'Login failed: ' + err.message);
@@ -203,17 +196,16 @@ module.exports = cds.service.impl(async function () {
   });
 
   // ── APPROVE LEAVE ────────────────────────────────────────────────
-  this.on('approveLeave', async function (req) {
+  srv.on('approveLeave', async function (req) {
     try {
       var leaveId = req.data.leaveId;
       var comments = req.data.comments;
-      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      const DBLeaveRequests = cds.entities['com.leaveapp.LeaveRequests'];
+      var leave = await SELECT.one.from(DBLeaveRequests).where({ ID: leaveId });
       if (!leave) return req.error(404, 'Leave request not found');
-
-      await UPDATE(LeaveRequests)
+      await UPDATE(DBLeaveRequests)
         .set({ status: 'APPROVED', comments: comments || '', approvedAt: new Date().toISOString() })
         .where({ ID: leaveId });
-
       return { success: true };
     } catch (err) {
       return req.error(500, err.message);
@@ -221,17 +213,16 @@ module.exports = cds.service.impl(async function () {
   });
 
   // ── REJECT LEAVE ─────────────────────────────────────────────────
-  this.on('rejectLeave', async function (req) {
+  srv.on('rejectLeave', async function (req) {
     try {
       var leaveId = req.data.leaveId;
       var comments = req.data.comments;
-      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      const DBLeaveRequests = cds.entities['com.leaveapp.LeaveRequests'];
+      var leave = await SELECT.one.from(DBLeaveRequests).where({ ID: leaveId });
       if (!leave) return req.error(404, 'Leave request not found');
-
       await UPDATE(LeaveRequests)
         .set({ status: 'REJECTED', comments: comments || '', rejectedAt: new Date().toISOString() })
         .where({ ID: leaveId });
-
       return { success: true };
     } catch (err) {
       return req.error(500, err.message);
@@ -239,47 +230,126 @@ module.exports = cds.service.impl(async function () {
   });
 
   // ── SUBMIT LEAVE ─────────────────────────────────────────────────
-  this.on('submitLeave', 'LeaveRequests', async function (req) {
+  srv.on('submitLeave', 'LeaveRequests', async function (req) {
     try {
-      var leaveId = req.params[0];
-      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
-      if (!leave) return req.error(404, 'Leave request not found');
+      // req.params[0] is an object { ID: 'uuid' } for bound actions
+      var param = req.params[0];
+      var leaveId = (param && typeof param === 'object') ? param.ID : param;
+      if (!leaveId) { req.error(400, 'Leave ID missing'); return; }
 
-      var wfInstanceId = await triggerWorkflow(leave, cds.db);
-      await UPDATE(LeaveRequests).set({ wfInstanceId: wfInstanceId }).where({ ID: leaveId });
+      // Use raw SQL via cds.run() — avoids entity-ref binding issues
+      // that cause "Cannot read properties of undefined (reading 'raw')"
+      var leave = await getLeaveById(leaveId);
+      if (!leave) { req.error(404, 'Leave request not found'); return; }
+
+      var wfInstanceId = await triggerWorkflow(leave);
+
+      await cds.run(
+        `UPDATE com_leaveapp_LeaveRequests SET wfInstanceId = ? WHERE ID = ?`,
+        [wfInstanceId, leaveId]
+      );
+
       return { success: true, wfInstanceId: wfInstanceId };
     } catch (err) {
-      console.error('[submitLeave]', err.message);
-      return req.error(500, err.message);
+      console.error('[submitLeave] ERROR:', err.message);
+      req.error(500, 'submitLeave failed: ' + err.message);
     }
   });
 
   // ── CANCEL LEAVE ─────────────────────────────────────────────────
-  this.on('cancelLeave', 'LeaveRequests', async function (req) {
+  srv.on('cancelLeave', 'LeaveRequests', async function (req) {
     try {
-      var leaveId = req.params[0];
-      await UPDATE(LeaveRequests).set({ status: 'CANCELLED' }).where({ ID: leaveId });
+      var param = req.params[0];
+      var leaveId = (param && typeof param === 'object') ? param.ID : param;
+      if (!leaveId) { req.error(400, 'Leave ID missing'); return; }
+
+      await cds.run(
+        `UPDATE com_leaveapp_LeaveRequests SET status = 'CANCELLED' WHERE ID = ?`,
+        [leaveId]
+      );
       return { success: true };
     } catch (err) {
-      return req.error(500, err.message);
+      console.error('[cancelLeave] ERROR:', err.message);
+      req.error(500, 'cancelLeave failed: ' + err.message);
+    }
+  });
+
+  // ── WORKFLOW CALLBACK — called by SBPA after manager decides ──────
+  // SBPA sends this after approve/reject in My Inbox
+  this.on('workflowCallback', async function (req) {
+    try {
+      // 🔓 BYPASS AUTH FOR WORKFLOW
+      if (!req.headers.authorization) {
+        console.log("⚠️ Workflow call without JWT");
+      }
+      var leaveId = req.data.leaveId;
+      var status = req.data.status;        // 'APPROVED' or 'REJECTED'
+      var comments = req.data.comments || '';
+      var decidedBy = req.data.decidedBy || '';
+      var callbackSecret = req.data.callbackSecret;
+
+      // ── Security check ──────────────────────────────────────────
+      // SBPA sends a secret we configured — reject if wrong
+      var expectedSecret = process.env.CALLBACK_SECRET || 'my-callback-secret-2024';
+      if (callbackSecret !== expectedSecret) {
+        console.warn('[callback] Invalid secret received — request blocked');
+        return req.error(403, 'Forbidden — invalid callback secret');
+      }
+
+      // ── Validate status value ───────────────────────────────────
+      if (!['APPROVED', 'REJECTED'].includes(status)) {
+        return req.error(400, 'Status must be APPROVED or REJECTED');
+      }
+
+      // ── Find the leave request ──────────────────────────────────
+      var leave = await SELECT.one.from(LeaveRequests).where({ ID: leaveId });
+      if (!leave) {
+        return req.error(404, 'Leave request not found: ' + leaveId);
+      }
+
+      // ── Update the record in HANA ───────────────────────────────
+      var updateData = {
+        status: status,
+        comments: comments
+      };
+
+      if (status === 'APPROVED') {
+        updateData.approvedAt = new Date().toISOString();
+      } else {
+        updateData.rejectedAt = new Date().toISOString();
+      }
+
+      await UPDATE(LeaveRequests)
+        .set(updateData)
+        .where({ ID: leaveId });
+
+      console.log('[callback] Leave', leaveId, 'updated to', status, 'by', decidedBy);
+
+      return {
+        success: true,
+        message: 'Leave request ' + leaveId + ' updated to ' + status
+      };
+
+    } catch (err) {
+      console.error('[callback] Error:', err.message);
+      return req.error(500, 'Callback failed: ' + err.message);
     }
   });
 
   // ── FILTER: Employee sees own, Manager sees team ──────────────────
-  this.before('READ', 'LeaveRequests', async function (req) {
+  srv.before('READ', 'LeaveRequests', async function (req) {
     var decoded = getJwtUser(req);
     if (!decoded) return req.error(401, 'Unauthorized');
 
-    var currentUser = await SELECT.one.from(Users).where({ ID: decoded.userId });
+    const DBUsers = cds.entities['com.leaveapp.Users'];
+    var currentUser = await SELECT.one.from(DBUsers).where({ ID: decoded.userId });
     if (!currentUser) return req.error(401, 'User not found');
 
     if (currentUser.role === 'EMPLOYEE') {
       req.query.where({ employee_ID: currentUser.ID });
-
     } else if (currentUser.role === 'MANAGER') {
       var team = await SELECT.from(Users).columns('ID').where({ manager_ID: currentUser.ID });
       var ids = team.map(function (u) { return u.ID; });
-
       if (ids.length === 0) {
         req.query.where({ ID: null });
       } else {
