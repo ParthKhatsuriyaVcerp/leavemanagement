@@ -7,51 +7,51 @@ var API_BASE = '/api';
 // ── Role definitions — single source of truth ─────────────────────
 var ROLES = [
   {
-    code        : 'EMPLOYEE',
-    label       : 'Employee',
-    icon        : '👤',
-    level       : 0,
-    description : 'Can submit leave requests',
+    code: 'EMPLOYEE',
+    label: 'Employee',
+    icon: '👤',
+    level: 0,
+    description: 'Can submit leave requests',
     needsManager: true
   },
   {
-    code        : 'MANAGER',
-    label       : 'Manager',
-    icon        : '👔',
-    level       : 1,
-    description : 'Approves employee leaves (Level 1)',
+    code: 'MANAGER',
+    label: 'Manager',
+    icon: '👔',
+    level: 1,
+    description: 'Approves employee leaves (Level 1)',
     needsManager: true
   },
   {
-    code        : 'TEAMLEAD',
-    label       : 'Team Lead',
-    icon        : '🧑‍💻',
-    level       : 2,
-    description : 'Approves after manager (Level 2)',
+    code: 'TEAMLEAD',
+    label: 'Team Lead',
+    icon: '🧑‍💻',
+    level: 2,
+    description: 'Approves after manager (Level 2)',
     needsManager: true
   },
   {
-    code        : 'PM',
-    label       : 'Project Manager',
-    icon        : '📋',
-    level       : 3,
-    description : 'Approves after TL (Level 3)',
+    code: 'PM',
+    label: 'Project Manager',
+    icon: '📋',
+    level: 3,
+    description: 'Approves after TL (Level 3)',
     needsManager: false
   },
   {
-    code        : 'HR',
-    label       : 'HR',
-    icon        : '🏢',
-    level       : 4,
-    description : 'Final approval authority (Level 4)',
+    code: 'HR',
+    label: 'HR',
+    icon: '🏢',
+    level: 4,
+    description: 'Final approval authority (Level 4)',
     needsManager: false
   },
   {
-    code        : 'ADMIN',
-    label       : 'Admin',
-    icon        : '⚙️',
-    level       : 99,
-    description : 'Full system access',
+    code: 'ADMIN',
+    label: 'Admin',
+    icon: '⚙️',
+    level: 99,
+    description: 'Full system access',
     needsManager: false
   }
 ];
@@ -67,20 +67,20 @@ function getRoleInfo(code) {
 // ── Session helpers ───────────────────────────────────────────────
 function getSession() {
   return {
-    token        : localStorage.getItem('lm_token')         || '',
-    userId       : localStorage.getItem('lm_userId')        || '',
-    role         : localStorage.getItem('lm_role')          || '',
+    token: localStorage.getItem('lm_token') || '',
+    userId: localStorage.getItem('lm_userId') || '',
+    role: localStorage.getItem('lm_role') || '',
     approvalLevel: parseInt(localStorage.getItem('lm_approvalLevel') || '0'),
-    name         : localStorage.getItem('lm_name')          || ''
+    name: localStorage.getItem('lm_name') || ''
   };
 }
 
 function saveSession(data) {
-  localStorage.setItem('lm_token',         data.token        || '');
-  localStorage.setItem('lm_userId',        data.userId       || '');
-  localStorage.setItem('lm_role',          data.roleCode     || data.role || '');
+  localStorage.setItem('lm_token', data.token || '');
+  localStorage.setItem('lm_userId', data.userId || '');
+  localStorage.setItem('lm_role', data.roleCode || data.role || '');
   localStorage.setItem('lm_approvalLevel', data.approvalLevel != null ? data.approvalLevel : '0');
-  localStorage.setItem('lm_name',          data.name         || '');
+  localStorage.setItem('lm_name', data.name || '');
 }
 
 function logout() {
@@ -91,7 +91,7 @@ function logout() {
 // ── Fetch with X-JWT-Token header (BAS-safe) ──────────────────────
 async function apiFetch(path, method, body) {
   method = method || 'GET';
-  body   = (body !== undefined) ? body : null;
+  body = (body !== undefined) ? body : null;
 
   var session = getSession();
 
@@ -124,14 +124,15 @@ async function apiCreate(path, body) {
   var session = getSession();
   var headers = {
     'Content-Type': 'application/json',
-    'Prefer'      : 'return=representation'
+    'Prefer': 'return=representation',
+    'X-JWT-Token': session.token || ''
   };
   if (session.token) headers['X-JWT-Token'] = session.token;
 
   return fetch(API_BASE + path, {
-    method : 'POST',
+    method: 'POST',
     headers: headers,
-    body   : JSON.stringify(body)
+    body: JSON.stringify(body)
   });
 }
 
@@ -151,14 +152,14 @@ function showAlert(id, msg, type) {
   var el = document.getElementById(id);
   if (!el) return;
   el.textContent = msg;
-  el.className   = 'alert alert-' + type + ' show';
+  el.className = 'alert alert-' + type + ' show';
 }
 
 function clearAlert(id) {
   var el = document.getElementById(id);
   if (!el) return;
   el.textContent = '';
-  el.className   = 'alert';
+  el.className = 'alert';
 }
 
 // ── Date helpers ──────────────────────────────────────────────────
@@ -176,13 +177,13 @@ function calcDays(s, e) {
 // ── Status display helper ─────────────────────────────────────────
 function statusBadge(status) {
   var map = {
-    'PENDING'        : 'Pending',
+    'PENDING': 'Pending',
     'LEVEL1_APPROVED': 'Manager Approved',
     'LEVEL2_APPROVED': 'TL Approved',
     'LEVEL3_APPROVED': 'PM Approved',
-    'FULLY_APPROVED' : 'Fully Approved',
-    'REJECTED'       : 'Rejected',
-    'CANCELLED'      : 'Cancelled'
+    'FULLY_APPROVED': 'Fully Approved',
+    'REJECTED': 'Rejected',
+    'CANCELLED': 'Cancelled'
   };
   var label = map[status] || status;
   return '<span class="status status-' + status + '">' + label + '</span>';
@@ -190,6 +191,6 @@ function statusBadge(status) {
 
 // ── Approval level label ──────────────────────────────────────────
 function levelLabel(level) {
-  var map = { 0:'Employee', 1:'Manager', 2:'Team Lead', 3:'Project Manager', 4:'HR', 99:'Admin' };
+  var map = { 0: 'Employee', 1: 'Manager', 2: 'Team Lead', 3: 'Project Manager', 4: 'HR', 99: 'Admin' };
   return map[level] || 'Level ' + level;
 }

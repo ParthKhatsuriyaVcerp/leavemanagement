@@ -40,7 +40,7 @@ cds.on('bootstrap', (app) => {
 
   // ── CORS — allow all origins and our custom header ─────────────
   app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin',  '*');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-JWT-Token,Prefer');
 
@@ -61,37 +61,37 @@ cds.on('bootstrap', (app) => {
       console.log(`[DEV Auth] ${req.method} ${req.path}`);
 
       // Public APIs
-    if (isPublicPath(resourcePath)) {
+      if (isPublicPath(resourcePath)) {
         console.log('[DEV Auth] Public — allowed');
-      return next();
-    }
+        return next();
+      }
 
       // ── Extract token (X-JWT-Token preferred) ────────────────
-    let token = req.headers['x-jwt-token'] || req.headers['X-JWT-Token'];
+      let token = req.headers['x-jwt-token'] || req.headers['X-JWT-Token'];
 
-    if (!token) {
-      const auth = req.headers['authorization'] || '';
+      if (!token) {
+        const auth = req.headers['authorization'] || '';
         if (auth.startsWith('Bearer ')) {
           token = auth.slice(7);
         }
-    }
+      }
 
       // ── Validate token ───────────────────────────────────────
-    const decoded = verifyToken(token);
+      const decoded = verifyToken(token);
 
-    if (!decoded) {
+      if (!decoded) {
         console.log('[DEV Auth] BLOCKED — invalid token');
-      return res.status(401).json({
-        error: { code: '401', message: 'Unauthorized — please log in again' }
-      });
-    }
+        return res.status(401).json({
+          error: { code: '401', message: 'Unauthorized — please log in again' }
+        });
+      }
 
       // ✅ IMPORTANT: CAP expects req.user
       req.user = decoded;
 
       console.log('[DEV Auth] OK —', decoded.email, decoded.role);
-    next();
-  });
+      next();
+    });
 
   } else {
 
@@ -100,6 +100,7 @@ cds.on('bootstrap', (app) => {
     // ============================================================
     const xsenv = require('@sap/xsenv');
     const xssec = require('@sap/xssec');
+    const JWTStrategy = xssec.JWTStrategy;
 
     xsenv.loadEnv();
 
@@ -108,7 +109,7 @@ cds.on('bootstrap', (app) => {
     }).uaa;
 
     // Configure passport with XSUAA
-    passport.use(new xssec.JWTStrategy(uaaService));
+    passport.use(new JWTStrategy(uaaService));
     app.use(passport.initialize());
 
     app.use('/api', (req, res, next) => {

@@ -1,8 +1,14 @@
 {
   "name": "leave-management",
   "version": "1.0.0",
+  "description": "Leave Management System with Multi-Level Approval Workflow",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
+    "@cap-js/hana": "^2.7.0",
     "@sap/cds": "^9",
+    "@sap/xsenv": "^6.1.0",
     "@sap/xssec": "^4.13.0",
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
@@ -15,7 +21,9 @@
   },
   "scripts": {
     "start": "cds-serve",
-    "watch": "cds watch"
+    "watch": "cds watch",
+    "build": "npx cds build --production",
+    "deploy:db": "npx hana-cli deploy --auto-undeploy"
   },
   "cds": {
     "requires": {
@@ -37,6 +45,34 @@
       "uaa": {
         "kind": "xsuaa"
       }
+    },
+    "server": {
+      "cors": true
+    },
+    "build": {
+      "target": "gen",
+      "tasks": [
+        {
+          "for": "hana",
+          "src": "db",
+          "options": {
+            "model": [
+              "db",
+              "srv"
+            ]
+          }
+        },
+        {
+          "for": "nodejs",
+          "src": "srv",
+          "options": {
+            "model": [
+              "db",
+              "srv"
+            ]
+          }
+        }
+      ]
     }
   }
 }

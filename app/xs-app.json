@@ -1,0 +1,17 @@
+{
+    "welcomeFile": "/index.html",
+        "authenticationMethod": "none",
+            "routes": [
+                {
+                    "source": "^/api/(.*)$",
+                    "destination": "srv-api",
+                    "target": "/api/$1",
+                    "csrfProtection": false
+                },
+                {
+                    "source": "^(.*)$",
+                    "localDir": ".",
+                    "cacheControl": "no-cache, no-store, must-revalidate"
+                }
+            ]
+}

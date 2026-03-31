@@ -84,12 +84,19 @@
           "length": 50,
           "notNull": true
         },
-        "role": {
+        "roleCode": {
           "type": "cds.String",
           "length": 20,
           "notNull": true,
           "default": {
             "val": "EMPLOYEE"
+          }
+        },
+        "approvalLevel": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 0
           }
         },
         "manager": {
@@ -111,6 +118,58 @@
           "type": "cds.Boolean",
           "default": {
             "val": true
+          }
+        }
+      }
+    },
+    "com.leaveapp.ApprovalLevels": {
+      "kind": "entity",
+      "includes": [
+        "cuid"
+      ],
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "department": {
+          "type": "cds.String",
+          "length": 100,
+          "notNull": true
+        },
+        "totalLevels": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 2
+          }
+        },
+        "level1Role": {
+          "type": "cds.String",
+          "length": 20,
+          "default": {
+            "val": "MANAGER"
+          }
+        },
+        "level2Role": {
+          "type": "cds.String",
+          "length": 20,
+          "default": {
+            "val": "TEAMLEAD"
+          }
+        },
+        "level3Role": {
+          "type": "cds.String",
+          "length": 20,
+          "default": {
+            "val": "PM"
+          }
+        },
+        "level4Role": {
+          "type": "cds.String",
+          "length": 20,
+          "default": {
+            "val": "HR"
           }
         }
       }
@@ -218,23 +277,27 @@
             "val": "PENDING"
           }
         },
+        "currentLevel": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 1
+          }
+        },
+        "totalLevels": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 1
+          }
+        },
         "wfInstanceId": {
           "type": "cds.String",
           "length": 100
         },
-        "approvedBy": {
-          "type": "cds.Association",
-          "target": "com.leaveapp.Users",
-          "keys": [
-            {
-              "ref": [
-                "ID"
-              ]
-            }
-          ]
-        },
-        "approvedAt": {
-          "type": "cds.DateTime"
+        "comments": {
+          "type": "cds.String",
+          "length": 500
         },
         "rejectedBy": {
           "type": "cds.Association",
@@ -249,10 +312,6 @@
         },
         "rejectedAt": {
           "type": "cds.DateTime"
-        },
-        "comments": {
-          "type": "cds.String",
-          "length": 500
         }
       }
     },
@@ -294,7 +353,7 @@
             {
               "ref": [
                 "emp",
-                "role"
+                "roleCode"
               ]
             },
             {
@@ -362,7 +421,7 @@
           "length": 100,
           "notNull": true
         },
-        "role": {
+        "roleCode": {
           "type": "cds.String",
           "length": 20,
           "notNull": true,
@@ -388,6 +447,115 @@
         }
       }
     },
+    "com.leaveapp.ApprovalSteps": {
+      "kind": "entity",
+      "includes": [
+        "cuid",
+        "managed"
+      ],
+      "elements": {
+        "ID": {
+          "key": true,
+          "type": "cds.UUID"
+        },
+        "createdAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "createdBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@Core.Immutable": true,
+          "@title": "{i18n>CreatedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "modifiedAt": {
+          "@cds.on.insert": {
+            "=": "$now"
+          },
+          "@cds.on.update": {
+            "=": "$now"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedAt}",
+          "@readonly": true,
+          "type": "cds.Timestamp"
+        },
+        "modifiedBy": {
+          "@cds.on.insert": {
+            "=": "$user"
+          },
+          "@cds.on.update": {
+            "=": "$user"
+          },
+          "@UI.HiddenFilter": true,
+          "@UI.ExcludeFromNavigationContext": true,
+          "@title": "{i18n>ChangedBy}",
+          "@readonly": true,
+          "@description": "{i18n>UserID.Description}",
+          "type": "User",
+          "length": 255
+        },
+        "leaveRequest": {
+          "type": "cds.Association",
+          "target": "com.leaveapp.LeaveRequests",
+          "keys": [
+            {
+              "ref": [
+                "ID"
+              ]
+            }
+          ],
+          "notNull": true
+        },
+        "level": {
+          "type": "cds.Integer",
+          "notNull": true
+        },
+        "approverRole": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true
+        },
+        "approverEmail": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "approverName": {
+          "type": "cds.String",
+          "length": 100
+        },
+        "status": {
+          "type": "cds.String",
+          "length": 20,
+          "notNull": true,
+          "default": {
+            "val": "PENDING"
+          }
+        },
+        "comments": {
+          "type": "cds.String",
+          "length": 500
+        },
+        "decidedAt": {
+          "type": "cds.DateTime"
+        }
+      }
+    },
     "LeaveService": {
       "@source": "srv/leave-service.cds",
       "kind": "service",
@@ -408,7 +576,7 @@
         "lastName": {
           "type": "cds.String"
         },
-        "role": {
+        "roleCode": {
           "type": "cds.String"
         },
         "managerId": {
@@ -416,6 +584,9 @@
         },
         "department": {
           "type": "cds.String"
+        },
+        "approvalLevel": {
+          "type": "cds.Integer"
         }
       },
       "returns": {
@@ -424,9 +595,6 @@
             "type": "cds.Boolean"
           },
           "message": {
-            "type": "cds.String"
-          },
-          "userId": {
             "type": "cds.String"
           }
         }
@@ -453,10 +621,43 @@
           "userId": {
             "type": "cds.String"
           },
-          "role": {
+          "roleCode": {
             "type": "cds.String"
           },
           "name": {
+            "type": "cds.String"
+          }
+        }
+      }
+    },
+    "LeaveService.workflowCallback": {
+      "kind": "action",
+      "params": {
+        "leaveId": {
+          "type": "cds.String"
+        },
+        "status": {
+          "type": "cds.String"
+        },
+        "comments": {
+          "type": "cds.String"
+        },
+        "decidedBy": {
+          "type": "cds.String"
+        },
+        "approvalLevel": {
+          "type": "cds.Integer"
+        },
+        "callbackSecret": {
+          "type": "cds.String"
+        }
+      },
+      "returns": {
+        "elements": {
+          "success": {
+            "type": "cds.Boolean"
+          },
+          "message": {
             "type": "cds.String"
           }
         }
@@ -569,23 +770,27 @@
             "val": "PENDING"
           }
         },
+        "currentLevel": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 1
+          }
+        },
+        "totalLevels": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 1
+          }
+        },
         "wfInstanceId": {
           "type": "cds.String",
           "length": 100
         },
-        "approvedBy": {
-          "type": "cds.Association",
-          "target": "LeaveService.Users",
-          "keys": [
-            {
-              "ref": [
-                "ID"
-              ]
-            }
-          ]
-        },
-        "approvedAt": {
-          "type": "cds.DateTime"
+        "comments": {
+          "type": "cds.String",
+          "length": 500
         },
         "rejectedBy": {
           "type": "cds.Association",
@@ -600,10 +805,6 @@
         },
         "rejectedAt": {
           "type": "cds.DateTime"
-        },
-        "comments": {
-          "type": "cds.String",
-          "length": 500
         }
       },
       "actions": {
@@ -634,7 +835,7 @@
     },
     "LeaveService.approveLeave": {
       "kind": "action",
-      "@requires": "Manager",
+      "@requires": "authenticated-user",
       "params": {
         "leaveId": {
           "type": "cds.String"
@@ -653,7 +854,7 @@
     },
     "LeaveService.rejectLeave": {
       "kind": "action",
-      "@requires": "Manager",
+      "@requires": "authenticated-user",
       "params": {
         "leaveId": {
           "type": "cds.String"
@@ -756,12 +957,19 @@
           "length": 50,
           "notNull": true
         },
-        "role": {
+        "roleCode": {
           "type": "cds.String",
           "length": 20,
           "notNull": true,
           "default": {
             "val": "EMPLOYEE"
+          }
+        },
+        "approvalLevel": {
+          "type": "cds.Integer",
+          "notNull": true,
+          "default": {
+            "val": 0
           }
         },
         "manager": {
@@ -787,13 +995,13 @@
         }
       }
     },
-    "LeaveService.HierarchyView": {
+    "LeaveService.ApprovalLevels": {
       "kind": "entity",
       "@readonly": true,
       "projection": {
         "from": {
           "ref": [
-            "com.leaveapp.EmployeeHierarchyView"
+            "com.leaveapp.ApprovalLevels"
           ]
         }
       },
@@ -802,44 +1010,45 @@
           "key": true,
           "type": "cds.UUID"
         },
-        "firstName": {
-          "type": "cds.String",
-          "length": 50,
-          "notNull": true
-        },
-        "lastName": {
-          "type": "cds.String",
-          "length": 50,
-          "notNull": true
-        },
-        "email": {
+        "department": {
           "type": "cds.String",
           "length": 100,
           "notNull": true
         },
-        "role": {
-          "type": "cds.String",
-          "length": 20,
+        "totalLevels": {
+          "type": "cds.Integer",
           "notNull": true,
           "default": {
-            "val": "EMPLOYEE"
+            "val": 2
           }
         },
-        "department": {
+        "level1Role": {
           "type": "cds.String",
-          "length": 100
+          "length": 20,
+          "default": {
+            "val": "MANAGER"
+          }
         },
-        "managerFirstName": {
+        "level2Role": {
           "type": "cds.String",
-          "length": 50
+          "length": 20,
+          "default": {
+            "val": "TEAMLEAD"
+          }
         },
-        "managerLastName": {
+        "level3Role": {
           "type": "cds.String",
-          "length": 50
+          "length": 20,
+          "default": {
+            "val": "PM"
+          }
         },
-        "managerEmail": {
+        "level4Role": {
           "type": "cds.String",
-          "length": 100
+          "length": 20,
+          "default": {
+            "val": "HR"
+          }
         }
       }
     },

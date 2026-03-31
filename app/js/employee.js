@@ -155,8 +155,34 @@ async function submitLeave() {
       }
     }
 
-    var created   = await safeJson(createRes);
-    var createdId = created.ID || created.id;
+     // ── Extract ID — try 3 sources in order of reliability ───────
+    var createdId = null;
+    // 1. Location header: SAP BAS proxy always sets this even when it
+    //    strips the body. Format: "LeaveRequests(uuid)" or full URL ending in same.
+    //    This is the most reliable source in the BAS hosted environment.
+    var locationHeader = createRes.headers.get('Location') || createRes.headers.get('location') || '';
+    console.log('[submitLeave] Location header:', locationHeader);
+    if (locationHeader) {
+      var locMatch = locationHeader.match(/LeaveRequests\(([^)]+)\)/);
+      if (locMatch) createdId = locMatch[1];
+    }
+
+    // 2. Response body: works in local dev / non-BAS environments
+    if (!createdId) {
+      var createdText = await createRes.text();
+      console.log('[submitLeave] Response body:', createdText);
+      if (createdText && createdText.trim() !== '') {
+        try {
+          var created = JSON.parse(createdText);
+          createdId = created.ID || created.id;
+        } catch(e) { /* body was not JSON */ }
+      }
+    }
+
+    // console.log('[submitLeave] Resolved ID:', createdId);
+
+    // var created   = await safeJson(createRes);
+    // var createdId = created.ID || created.id;
 
     if (!createdId) throw new Error('Leave record created but ID not returned');
 

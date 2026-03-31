@@ -25,15 +25,15 @@
       <EntityContainer Name="EntityContainer">
         <EntitySet Name="LeaveRequests" EntityType="LeaveService.LeaveRequests">
           <NavigationPropertyBinding Path="employee" Target="Users"/>
-          <NavigationPropertyBinding Path="approvedBy" Target="Users"/>
           <NavigationPropertyBinding Path="rejectedBy" Target="Users"/>
         </EntitySet>
         <EntitySet Name="Users" EntityType="LeaveService.Users">
           <NavigationPropertyBinding Path="manager" Target="Users"/>
         </EntitySet>
-        <EntitySet Name="HierarchyView" EntityType="LeaveService.HierarchyView"/>
+        <EntitySet Name="ApprovalLevels" EntityType="LeaveService.ApprovalLevels"/>
         <ActionImport Name="register" Action="LeaveService.register"/>
         <ActionImport Name="login" Action="LeaveService.login"/>
+        <ActionImport Name="workflowCallback" Action="LeaveService.workflowCallback"/>
         <ActionImport Name="approveLeave" Action="LeaveService.approveLeave"/>
         <ActionImport Name="rejectLeave" Action="LeaveService.rejectLeave"/>
       </EntityContainer>
@@ -56,18 +56,15 @@
         <Property Name="totalDays" Type="Edm.Int32"/>
         <Property Name="reason" Type="Edm.String" MaxLength="500"/>
         <Property Name="status" Type="Edm.String" MaxLength="20" Nullable="false" DefaultValue="PENDING"/>
+        <Property Name="currentLevel" Type="Edm.Int32" Nullable="false" DefaultValue="1"/>
+        <Property Name="totalLevels" Type="Edm.Int32" Nullable="false" DefaultValue="1"/>
         <Property Name="wfInstanceId" Type="Edm.String" MaxLength="100"/>
-        <NavigationProperty Name="approvedBy" Type="LeaveService.Users">
-          <ReferentialConstraint Property="approvedBy_ID" ReferencedProperty="ID"/>
-        </NavigationProperty>
-        <Property Name="approvedBy_ID" Type="Edm.Guid"/>
-        <Property Name="approvedAt" Type="Edm.DateTimeOffset"/>
+        <Property Name="comments" Type="Edm.String" MaxLength="500"/>
         <NavigationProperty Name="rejectedBy" Type="LeaveService.Users">
           <ReferentialConstraint Property="rejectedBy_ID" ReferencedProperty="ID"/>
         </NavigationProperty>
         <Property Name="rejectedBy_ID" Type="Edm.Guid"/>
         <Property Name="rejectedAt" Type="Edm.DateTimeOffset"/>
-        <Property Name="comments" Type="Edm.String" MaxLength="500"/>
       </EntityType>
       <EntityType Name="Users">
         <Key>
@@ -81,7 +78,8 @@
         <Property Name="email" Type="Edm.String" MaxLength="100" Nullable="false"/>
         <Property Name="firstName" Type="Edm.String" MaxLength="50" Nullable="false"/>
         <Property Name="lastName" Type="Edm.String" MaxLength="50" Nullable="false"/>
-        <Property Name="role" Type="Edm.String" MaxLength="20" Nullable="false" DefaultValue="EMPLOYEE"/>
+        <Property Name="roleCode" Type="Edm.String" MaxLength="20" Nullable="false" DefaultValue="EMPLOYEE"/>
+        <Property Name="approvalLevel" Type="Edm.Int32" Nullable="false" DefaultValue="0"/>
         <NavigationProperty Name="manager" Type="LeaveService.Users">
           <ReferentialConstraint Property="manager_ID" ReferencedProperty="ID"/>
         </NavigationProperty>
@@ -89,31 +87,32 @@
         <Property Name="department" Type="Edm.String" MaxLength="100"/>
         <Property Name="isActive" Type="Edm.Boolean" DefaultValue="true"/>
       </EntityType>
-      <EntityType Name="HierarchyView">
+      <EntityType Name="ApprovalLevels">
         <Key>
           <PropertyRef Name="ID"/>
         </Key>
         <Property Name="ID" Type="Edm.Guid" Nullable="false"/>
-        <Property Name="firstName" Type="Edm.String" MaxLength="50" Nullable="false"/>
-        <Property Name="lastName" Type="Edm.String" MaxLength="50" Nullable="false"/>
-        <Property Name="email" Type="Edm.String" MaxLength="100" Nullable="false"/>
-        <Property Name="role" Type="Edm.String" MaxLength="20" Nullable="false" DefaultValue="EMPLOYEE"/>
-        <Property Name="department" Type="Edm.String" MaxLength="100"/>
-        <Property Name="managerFirstName" Type="Edm.String" MaxLength="50"/>
-        <Property Name="managerLastName" Type="Edm.String" MaxLength="50"/>
-        <Property Name="managerEmail" Type="Edm.String" MaxLength="100"/>
+        <Property Name="department" Type="Edm.String" MaxLength="100" Nullable="false"/>
+        <Property Name="totalLevels" Type="Edm.Int32" Nullable="false" DefaultValue="2"/>
+        <Property Name="level1Role" Type="Edm.String" MaxLength="20" DefaultValue="MANAGER"/>
+        <Property Name="level2Role" Type="Edm.String" MaxLength="20" DefaultValue="TEAMLEAD"/>
+        <Property Name="level3Role" Type="Edm.String" MaxLength="20" DefaultValue="PM"/>
+        <Property Name="level4Role" Type="Edm.String" MaxLength="20" DefaultValue="HR"/>
       </EntityType>
       <ComplexType Name="return_LeaveService_register">
         <Property Name="success" Type="Edm.Boolean"/>
         <Property Name="message" Type="Edm.String"/>
-        <Property Name="userId" Type="Edm.String"/>
       </ComplexType>
       <ComplexType Name="return_LeaveService_login">
         <Property Name="success" Type="Edm.Boolean"/>
         <Property Name="token" Type="Edm.String"/>
         <Property Name="userId" Type="Edm.String"/>
-        <Property Name="role" Type="Edm.String"/>
+        <Property Name="roleCode" Type="Edm.String"/>
         <Property Name="name" Type="Edm.String"/>
+      </ComplexType>
+      <ComplexType Name="return_LeaveService_workflowCallback">
+        <Property Name="success" Type="Edm.Boolean"/>
+        <Property Name="message" Type="Edm.String"/>
       </ComplexType>
       <ComplexType Name="return_LeaveService_LeaveRequests_submitLeave">
         <Property Name="success" Type="Edm.Boolean"/>
@@ -141,15 +140,25 @@
         <Parameter Name="password" Type="Edm.String"/>
         <Parameter Name="firstName" Type="Edm.String"/>
         <Parameter Name="lastName" Type="Edm.String"/>
-        <Parameter Name="role" Type="Edm.String"/>
+        <Parameter Name="roleCode" Type="Edm.String"/>
         <Parameter Name="managerId" Type="Edm.String"/>
         <Parameter Name="department" Type="Edm.String"/>
+        <Parameter Name="approvalLevel" Type="Edm.Int32"/>
         <ReturnType Type="LeaveService.return_LeaveService_register"/>
       </Action>
       <Action Name="login" IsBound="false">
         <Parameter Name="email" Type="Edm.String"/>
         <Parameter Name="password" Type="Edm.String"/>
         <ReturnType Type="LeaveService.return_LeaveService_login"/>
+      </Action>
+      <Action Name="workflowCallback" IsBound="false">
+        <Parameter Name="leaveId" Type="Edm.String"/>
+        <Parameter Name="status" Type="Edm.String"/>
+        <Parameter Name="comments" Type="Edm.String"/>
+        <Parameter Name="decidedBy" Type="Edm.String"/>
+        <Parameter Name="approvalLevel" Type="Edm.Int32"/>
+        <Parameter Name="callbackSecret" Type="Edm.String"/>
+        <ReturnType Type="LeaveService.return_LeaveService_workflowCallback"/>
       </Action>
       <Action Name="approveLeave" IsBound="false">
         <Parameter Name="leaveId" Type="Edm.String"/>
@@ -240,7 +249,7 @@
         <Annotation Term="Core.Description" String="{i18n>UserID.Description}"/>
         <Annotation Term="Common.Label" String="{i18n>ChangedBy}"/>
       </Annotations>
-      <Annotations Target="LeaveService.EntityContainer/HierarchyView">
+      <Annotations Target="LeaveService.EntityContainer/ApprovalLevels">
         <Annotation Term="Capabilities.DeleteRestrictions">
           <Record Type="Capabilities.DeleteRestrictionsType">
             <PropertyValue Property="Deletable" Bool="false"/>
@@ -257,7 +266,7 @@
           </Record>
         </Annotation>
       </Annotations>
-      <Annotations Target="LeaveService.HierarchyView/ID">
+      <Annotations Target="LeaveService.ApprovalLevels/ID">
         <Annotation Term="Core.ComputedDefaultValue" Bool="true"/>
       </Annotations>
     </Schema>
