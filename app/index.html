@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leave Management — Login</title>
+  <title>Leave Management — Sign In</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -39,19 +39,21 @@
     <!-- ── REGISTER VIEW ──────────────────────────────────────── -->
     <div id="registerView" class="hidden">
       <h1>Create account</h1>
-      <p class="subtitle">Join as an Employee or Manager</p>
+      <p class="subtitle">Fill in your details to get started</p>
 
       <div class="alert alert-error"   id="regError"></div>
       <div class="alert alert-success" id="regSuccess"></div>
 
-      <div class="form-group">
-        <label for="regFirstName">First name</label>
-        <input type="text" id="regFirstName" placeholder="Raj">
-      </div>
-
-      <div class="form-group">
-        <label for="regLastName">Last name</label>
-        <input type="text" id="regLastName" placeholder="Shah">
+      <!-- Name row -->
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="regFirstName">First name</label>
+          <input type="text" id="regFirstName" placeholder="Raj">
+        </div>
+        <div class="form-group">
+          <label for="regLastName">Last name</label>
+          <input type="text" id="regLastName" placeholder="Shah">
+        </div>
       </div>
 
       <div class="form-group">
@@ -66,28 +68,31 @@
 
       <div class="form-group">
         <label for="regDept">Department</label>
-        <input type="text" id="regDept" placeholder="Engineering, HR, Sales...">
+        <input type="text" id="regDept" placeholder="Engineering, HR, Finance...">
       </div>
 
+      <!-- Role selection cards -->
       <div class="form-group">
-        <label for="regRole">I am registering as</label>
-        <select id="regRole">
-          <option value="">— Select role —</option>
-          <option value="EMPLOYEE">Employee</option>
-          <option value="MANAGER">Manager</option>
-        </select>
+        <label>Select your role</label>
+        <div class="role-cards" id="roleCards"></div>
+        <input type="hidden" id="selectedRole" value="">
       </div>
 
+      <!-- Info box showing what the selected role means -->
+      <div class="info-box hidden" id="roleInfoBox"></div>
+
+      <!-- Manager dropdown — shown only when role needs a manager -->
       <div class="form-group hidden" id="managerGroup">
-        <label for="regManager">Select your manager</label>
+        <label for="regManager">Your direct manager</label>
         <select id="regManager">
           <option value="">— Select manager —</option>
         </select>
+        <div class="text-sm text-muted mt-8">Select the person who will be your Level 1 approver</div>
       </div>
 
-      <button class="btn btn-primary" id="regBtn">Create account</button>
+      <button class="btn btn-primary" id="regBtn" style="margin-top:8px;">Create account</button>
 
-      <div class="divider mt-16">
+      <div class="divider">
         Already have an account?
         <a class="link-text" id="goToLogin">Sign in</a>
       </div>

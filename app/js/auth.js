@@ -1,30 +1,86 @@
-/**
- * auth.js — Shared utilities for all pages
- *
- * KEY CHANGE: We send the JWT in "X-JWT-Token" header instead of
- * "Authorization: Bearer" because SAP BAS proxy blocks Authorization
- * headers with non-SAP tokens, returning 401 before your server sees them.
- */
+// auth.js — Shared utilities for all pages
 
-const API_BASE = '/api';
-// For BTP deployment change to your full URL:
-// const API_BASE = 'https://your-cap-app.cfapps.eu10.hana.ondemand.com/api';
+var API_BASE = '/api';
+// For BTP deployment change to full URL:
+// var API_BASE = 'https://your-cap-app.cfapps.eu10.hana.ondemand.com/api';
+
+// ── Role definitions — single source of truth ─────────────────────
+var ROLES = [
+  {
+    code        : 'EMPLOYEE',
+    label       : 'Employee',
+    icon        : '👤',
+    level       : 0,
+    description : 'Can submit leave requests',
+    needsManager: true
+  },
+  {
+    code        : 'MANAGER',
+    label       : 'Manager',
+    icon        : '👔',
+    level       : 1,
+    description : 'Approves employee leaves (Level 1)',
+    needsManager: true
+  },
+  {
+    code        : 'TEAMLEAD',
+    label       : 'Team Lead',
+    icon        : '🧑‍💻',
+    level       : 2,
+    description : 'Approves after manager (Level 2)',
+    needsManager: true
+  },
+  {
+    code        : 'PM',
+    label       : 'Project Manager',
+    icon        : '📋',
+    level       : 3,
+    description : 'Approves after TL (Level 3)',
+    needsManager: false
+  },
+  {
+    code        : 'HR',
+    label       : 'HR',
+    icon        : '🏢',
+    level       : 4,
+    description : 'Final approval authority (Level 4)',
+    needsManager: false
+  },
+  {
+    code        : 'ADMIN',
+    label       : 'Admin',
+    icon        : '⚙️',
+    level       : 99,
+    description : 'Full system access',
+    needsManager: false
+  }
+];
+
+// Get role info by code
+function getRoleInfo(code) {
+  for (var i = 0; i < ROLES.length; i++) {
+    if (ROLES[i].code === code) return ROLES[i];
+  }
+  return { code: code, label: code, icon: '👤', level: 0, needsManager: false };
+}
 
 // ── Session helpers ───────────────────────────────────────────────
 function getSession() {
   return {
-    token  : localStorage.getItem('lm_token'),
-    userId : localStorage.getItem('lm_userId'),
-    role   : localStorage.getItem('lm_role'),
-    name   : localStorage.getItem('lm_name'),
+    token        : localStorage.getItem('lm_token')         || '',
+    userId       : localStorage.getItem('lm_userId')        || '',
+    role         : localStorage.getItem('lm_role')          || '',
+    approvalLevel: parseInt(localStorage.getItem('lm_approvalLevel') || '0'),
+    name         : localStorage.getItem('lm_name')          || ''
   };
 }
 
 function saveSession(data) {
-  localStorage.setItem('lm_token',  data.token);
-  localStorage.setItem('lm_userId', data.userId);
-  localStorage.setItem('lm_role',   data.role);
-  localStorage.setItem('lm_name',   data.name);
+  localStorage.setItem('lm_token',         data.token        || '');
+  localStorage.setItem('lm_userId',        data.userId       || '');
+  localStorage.setItem('lm_role',          data.roleCode     || data.role || '');
+  localStorage.setItem('lm_approvalLevel', data.approvalLevel != null ? data.approvalLevel : '0');
+  localStorage.setItem('lm_name',          data.name         || '');
 }
 
 function logout() {
@@ -32,44 +88,54 @@ function logout() {
   window.location.href = 'index.html';
 }
 
-// ── Central fetch function ────────────────────────────────────────
-// Sends token in X-JWT-Token header — safe through SAP BAS proxy
+// ── Fetch with X-JWT-Token header (BAS-safe) ──────────────────────
 async function apiFetch(path, method, body) {
   method = method || 'GET';
-  body   = body   || null;
+  body   = (body !== undefined) ? body : null;
 
-  const { token } = getSession();
+  var session = getSession();
 
-  if (!token && path !== '/login' && path !== '/register') {
+  // Redirect to login if no token on protected routes
+  if (!session.token && path !== '/login' && path !== '/register') {
     window.location.href = 'index.html';
     return new Response('{}', { status: 401 });
   }
 
-  var headers = {
-    'Content-Type': 'application/json'
-  };
-
-  // Use X-JWT-Token — BAS proxy does NOT block custom headers
-  if (token) {
-    headers['X-JWT-Token'] = token;
-  }
+  var headers = { 'Content-Type': 'application/json' };
+  if (session.token) headers['X-JWT-Token'] = session.token;
 
   var opts = { method: method, headers: headers };
   if (body !== null) opts.body = JSON.stringify(body);
 
   var res = await fetch(API_BASE + path, opts);
 
-  // If token expired, redirect to login
+  // Auto logout on session expiry for GET requests
   if (res.status === 401 && method === 'GET') {
-    console.warn('[apiFetch] 401 on GET — session expired, logging out');
+    console.warn('[apiFetch] 401 — session expired');
     logout();
-    return res;
   }
 
   return res;
 }
 
-// ── Safe JSON parse — never throws even on empty response ─────────
+// Special fetch that returns the created entity body
+// Uses "Prefer: return=representation" so CAP returns 201 + body
+async function apiCreate(path, body) {
+  var session = getSession();
+  var headers = {
+    'Content-Type': 'application/json',
+    'Prefer'      : 'return=representation'
+  };
+  if (session.token) headers['X-JWT-Token'] = session.token;
+
+  return fetch(API_BASE + path, {
+    method : 'POST',
+    headers: headers,
+    body   : JSON.stringify(body)
+  });
+}
+
+// ── Safe JSON parse ───────────────────────────────────────────────
 async function safeJson(res) {
   try {
     var text = await res.text();
@@ -81,21 +147,21 @@ async function safeJson(res) {
 }
 
 // ── Alert helpers ─────────────────────────────────────────────────
-function showAlert(elementId, message, type) {
-  var el = document.getElementById(elementId);
+function showAlert(id, msg, type) {
+  var el = document.getElementById(id);
   if (!el) return;
-  el.textContent = message;
+  el.textContent = msg;
   el.className   = 'alert alert-' + type + ' show';
 }
 
-function clearAlert(elementId) {
-  var el = document.getElementById(elementId);
+function clearAlert(id) {
+  var el = document.getElementById(id);
   if (!el) return;
   el.textContent = '';
   el.className   = 'alert';
 }
 
-// ── Date and calculation helpers ──────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────
 function formatDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', {
@@ -103,8 +169,27 @@ function formatDate(d) {
   });
 }
 
-function calcDays(startStr, endStr) {
-  var s = new Date(startStr);
-  var e = new Date(endStr);
-  return Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
+function calcDays(s, e) {
+  return Math.ceil((new Date(e) - new Date(s)) / 86400000) + 1;
+}
+
+// ── Status display helper ─────────────────────────────────────────
+function statusBadge(status) {
+  var map = {
+    'PENDING'        : 'Pending',
+    'LEVEL1_APPROVED': 'Manager Approved',
+    'LEVEL2_APPROVED': 'TL Approved',
+    'LEVEL3_APPROVED': 'PM Approved',
+    'FULLY_APPROVED' : 'Fully Approved',
+    'REJECTED'       : 'Rejected',
+    'CANCELLED'      : 'Cancelled'
+  };
+  var label = map[status] || status;
+  return '<span class="status status-' + status + '">' + label + '</span>';
+}
+
+// ── Approval level label ──────────────────────────────────────────
+function levelLabel(level) {
+  var map = { 0:'Employee', 1:'Manager', 2:'Team Lead', 3:'Project Manager', 4:'HR', 99:'Admin' };
+  return map[level] || 'Level ' + level;
 }

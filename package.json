@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "dependencies": {
     "@sap/cds": "^9",
+    "@sap/xssec": "^4.13.0",
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "passport": "^0.7.0"
   },
   "devDependencies": {
     "@cap-js/sqlite": "^2"
@@ -18,7 +20,10 @@
   "cds": {
     "requires": {
       "auth": {
-        "kind": "dummy"
+        "kind": "xsuaa",
+        "[development]": {
+          "kind": "dummy"
+        }
       },
       "db": {
         "kind": "hana-cloud",
@@ -27,12 +32,11 @@
           "credentials": {
             "database": ":memory:"
           }
-        },
-        "credentials": {
-          "database": "my.db"
         }
+      },
+      "uaa": {
+        "kind": "xsuaa"
       }
     }
-  },
-  "private": true
+  }
 }
