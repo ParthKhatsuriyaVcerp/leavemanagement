@@ -1,0 +1,17 @@
+COLUMN TABLE com_leaveapp_Users (
+  ID NVARCHAR(36) NOT NULL,
+  createdAt TIMESTAMP,
+  createdBy NVARCHAR(255),
+  modifiedAt TIMESTAMP,
+  modifiedBy NVARCHAR(255),
+  email NVARCHAR(100) NOT NULL,
+  passwordHash NVARCHAR(256) NOT NULL,
+  firstName NVARCHAR(50) NOT NULL,
+  lastName NVARCHAR(50) NOT NULL,
+  roleCode NVARCHAR(20) NOT NULL DEFAULT 'EMPLOYEE',
+  approvalLevel INTEGER NOT NULL DEFAULT 0,
+  manager_ID NVARCHAR(36),
+  department NVARCHAR(100),
+  isActive BOOLEAN DEFAULT TRUE,
+  PRIMARY KEY(ID)
+)

@@ -1,0 +1,15 @@
+VIEW LeaveService_Users AS SELECT
+  Users_0.ID,
+  Users_0.createdAt,
+  Users_0.createdBy,
+  Users_0.modifiedAt,
+  Users_0.modifiedBy,
+  Users_0.email,
+  Users_0.firstName,
+  Users_0.lastName,
+  Users_0.roleCode,
+  Users_0.approvalLevel,
+  Users_0.manager_ID,
+  Users_0.department,
+  Users_0.isActive
+FROM com_leaveapp_Users AS Users_0

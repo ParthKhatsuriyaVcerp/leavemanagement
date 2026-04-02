@@ -1,0 +1,9 @@
+VIEW LeaveService_ApprovalLevels AS SELECT
+  ApprovalLevels_0.ID,
+  ApprovalLevels_0.department,
+  ApprovalLevels_0.totalLevels,
+  ApprovalLevels_0.level1Role,
+  ApprovalLevels_0.level2Role,
+  ApprovalLevels_0.level3Role,
+  ApprovalLevels_0.level4Role
+FROM com_leaveapp_ApprovalLevels AS ApprovalLevels_0

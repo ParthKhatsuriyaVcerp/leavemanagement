@@ -1,0 +1,12 @@
+VIEW com_leaveapp_EmployeeHierarchyView AS SELECT
+  emp_0.ID,
+  emp_0.firstName,
+  emp_0.lastName,
+  emp_0.email,
+  emp_0.roleCode,
+  emp_0.department,
+  manager_1.firstName AS managerFirstName,
+  manager_1.lastName AS managerLastName,
+  manager_1.email AS managerEmail
+FROM (com_leaveapp_Users AS emp_0 LEFT JOIN com_leaveapp_Users AS manager_1 ON emp_0.manager_ID = manager_1.ID)
+WHERE emp_0.isActive = TRUE

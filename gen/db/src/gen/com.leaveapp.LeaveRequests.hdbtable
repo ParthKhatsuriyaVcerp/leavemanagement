@@ -1,0 +1,21 @@
+COLUMN TABLE com_leaveapp_LeaveRequests (
+  ID NVARCHAR(36) NOT NULL,
+  createdAt TIMESTAMP,
+  createdBy NVARCHAR(255),
+  modifiedAt TIMESTAMP,
+  modifiedBy NVARCHAR(255),
+  employee_ID NVARCHAR(36) NOT NULL,
+  leaveType NVARCHAR(50) NOT NULL,
+  startDate DATE NOT NULL,
+  endDate DATE NOT NULL,
+  totalDays INTEGER,
+  reason NVARCHAR(500),
+  status NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  currentLevel INTEGER NOT NULL DEFAULT 1,
+  totalLevels INTEGER NOT NULL DEFAULT 1,
+  wfInstanceId NVARCHAR(100),
+  comments NVARCHAR(500),
+  rejectedBy_ID NVARCHAR(36),
+  rejectedAt SECONDDATE,
+  PRIMARY KEY(ID)
+)

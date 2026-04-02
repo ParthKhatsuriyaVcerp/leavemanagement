@@ -1,0 +1,20 @@
+VIEW LeaveService_LeaveRequests AS SELECT
+  LeaveRequests_0.ID,
+  LeaveRequests_0.createdAt,
+  LeaveRequests_0.createdBy,
+  LeaveRequests_0.modifiedAt,
+  LeaveRequests_0.modifiedBy,
+  LeaveRequests_0.employee_ID,
+  LeaveRequests_0.leaveType,
+  LeaveRequests_0.startDate,
+  LeaveRequests_0.endDate,
+  LeaveRequests_0.totalDays,
+  LeaveRequests_0.reason,
+  LeaveRequests_0.status,
+  LeaveRequests_0.currentLevel,
+  LeaveRequests_0.totalLevels,
+  LeaveRequests_0.wfInstanceId,
+  LeaveRequests_0.comments,
+  LeaveRequests_0.rejectedBy_ID,
+  LeaveRequests_0.rejectedAt
+FROM com_leaveapp_LeaveRequests AS LeaveRequests_0

@@ -1,0 +1,16 @@
+COLUMN TABLE com_leaveapp_ApprovalSteps (
+  ID NVARCHAR(36) NOT NULL,
+  createdAt TIMESTAMP,
+  createdBy NVARCHAR(255),
+  modifiedAt TIMESTAMP,
+  modifiedBy NVARCHAR(255),
+  leaveRequest_ID NVARCHAR(36) NOT NULL,
+  level INTEGER NOT NULL,
+  approverRole NVARCHAR(20) NOT NULL,
+  approverEmail NVARCHAR(100),
+  approverName NVARCHAR(100),
+  status NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  comments NVARCHAR(500),
+  decidedAt SECONDDATE,
+  PRIMARY KEY(ID)
+)
