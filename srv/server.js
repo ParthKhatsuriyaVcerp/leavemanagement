@@ -10,7 +10,6 @@
 
 const cds = require('@sap/cds');
 const jwt = require('jsonwebtoken');
-const passport = require('passport');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'leave-app-secret-key-change-in-prod';
 
@@ -95,23 +94,6 @@ cds.on('bootstrap', (app) => {
 
   } else {
 
-    // ============================================================
-    // 🚀 PRODUCTION MODE (XSUAA)
-    // ============================================================
-    const xsenv = require('@sap/xsenv');
-    const xssec = require('@sap/xssec');
-    const JWTStrategy = xssec.JWTStrategy;
-
-    xsenv.loadEnv();
-
-    const uaaService = xsenv.getServices({
-      uaa: { tag: 'xsuaa' }
-    }).uaa;
-
-    // Configure passport with XSUAA
-    passport.use(new JWTStrategy(uaaService));
-    app.use(passport.initialize());
-
     app.use('/api', (req, res, next) => {
 
       const resourcePath = req.path || '/';
@@ -123,22 +105,30 @@ cds.on('bootstrap', (app) => {
         return next();
       }
 
+      // ✅ CAP already attaches req.user automatically
+      if (!req.user) {
+        console.log('[PROD Auth] BLOCKED — no user');
+        return res.status(401).json({
+          error: { code: '401', message: 'Unauthorized' }
+        });
+      }
+
       // ── Authenticate via XSUAA ───────────────────────────────
-      passport.authenticate('JWT', { session: false }, (err, user) => {
+      // passport.authenticate('JWT', { session: false }, (err, user) => {
 
-        if (err || !user) {
-          console.log('[PROD Auth] BLOCKED — unauthorized');
-          return res.status(401).json({
-            error: { code: '401', message: 'Unauthorized' }
-          });
-        }
+      //   if (err || !user) {
+      //     console.log('[PROD Auth] BLOCKED — unauthorized');
+      //     return res.status(401).json({
+      //       error: { code: '401', message: 'Unauthorized' }
+      //     });
+      //   }
 
-        // Attach XSUAA user
-        req.user = user;
+      //   // Attach XSUAA user
+      //   req.user = user;
 
-        console.log('[PROD Auth] OK —', user.id);
-        next();
-      })(req, res, next);
+      //   console.log('[PROD Auth] OK —', user.id);
+      //   next();
+      // })(req, res, next);
     });
   }
 
